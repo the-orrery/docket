@@ -158,7 +158,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "poethepoet" },
-    { name = "pyrefly", specifier = ">=1.1.1" },
+    { name = "pyrefly", specifier = "==1.1.1" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
