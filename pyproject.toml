@@ -41,19 +41,21 @@ dev = [
     "pytest-mock",
     "pytest-randomly",
     "poethepoet",
+    "pyrefly==1.1.1",
+    "ruff==0.15.16",
 ]
 freeze = ["pyinstaller>=6.0"]
 
 [tool.poe.tasks]
-lint = "uvx ruff@0.15.16 check ."
-fmt = "uvx ruff@0.15.16 format ."
+lint = "ruff check ."
+fmt = "ruff format ."
 typecheck = "pyrefly check"
 test = "pytest"
-check = { sequence = ["lint", "typecheck", "test"], help = "lint + typecheck + test" }
+fmt-check = "ruff format --check ."
+check = { sequence = ["lint", "fmt-check", "typecheck", "test"], help = "lint + format + typecheck + test" }
 freeze = { cmd = "pyinstaller --onefile --clean --name docket src/docket/cli.py", help = "打单文件 binary 到 dist/" }
 
-# Repo-specific ruff overrides. CI runs the same local configuration with
-# `uvx ruff@0.15.16 check .`.
+# Repo-specific ruff overrides. CI runs the same local configuration.
 [tool.ruff.lint]
 # TRY003: docket raises one DocketError(message) with the message built at the
 # raise site — a deliberate single-exception CLI design (see errors.py), not the

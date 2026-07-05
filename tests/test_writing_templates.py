@@ -190,7 +190,10 @@ def test_groom_footer_shows_writing_health(repo, capsys):
     assert "comment 长度(字):" in out
     assert "warn(>1500): 1 条" in out
     assert "alarm(>2500): 1 条" in out
-    assert "长 comment 提示: 长 artifact 落 KB/docs/artifact;comment 只留链接 + 一句结论" in out
+    assert (
+        "长 comment 提示: 长 artifact 落 KB/docs/artifact;comment 只留链接 + 一句结论"
+        in out
+    )
 
 
 def test_groom_json_shape_unchanged_by_health(repo, capsys):

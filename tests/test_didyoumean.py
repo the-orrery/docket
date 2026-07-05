@@ -58,7 +58,9 @@ def test_command_suggestion_none_when_no_known_verb_follows():
 
 def test_unknown_subcommand_suggests_following_verb():
     with pytest.raises(_UsageError) as ei:
-        cli._cli.main(["issue", "show", "ISSUE-1"], prog_name="docket", standalone_mode=False)
+        cli._cli.main(
+            ["issue", "show", "ISSUE-1"], prog_name="docket", standalone_mode=False
+        )
     msg = ei.value.message
     assert "Did you mean: 'show'?" in msg
     assert "docket show ISSUE-1" in msg
