@@ -42,3 +42,4 @@ reviews:
     - path: ".github/**"
       instructions: |
         Keep workflow permissions minimal, pin actions to commit SHAs, and avoid introducing secrets into pull_request workflows.
+        For gitleaks/gitleaks-action pull_request scans, GITHUB_TOKEN is required by the action even when comments are disabled; verify the token has minimal read-only permissions instead of suggesting removal.
