@@ -51,7 +51,8 @@ lint = "ruff check ."
 fmt = "ruff format ."
 typecheck = "pyrefly check"
 test = "pytest"
-check = { sequence = ["lint", "typecheck", "test"], help = "lint + typecheck + test" }
+fmt-check = "ruff format --check ."
+check = { sequence = ["lint", "fmt-check", "typecheck", "test"], help = "lint + format + typecheck + test" }
 freeze = { cmd = "pyinstaller --onefile --clean --name docket src/docket/cli.py", help = "打单文件 binary 到 dist/" }
 
 # Repo-specific ruff overrides. CI runs the same local configuration.

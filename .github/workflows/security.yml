@@ -45,7 +45,7 @@ jobs:
             >/dev/null
 
       - name: Audit runtime dependencies
-        run: uv run --with pip-audit pip-audit -r requirements-audit.txt --disable-pip --no-deps
+        run: uv run --with "pip-audit==2.10.1" pip-audit -r requirements-audit.txt --disable-pip --no-deps
 
   actions-audit:
     name: GitHub Actions audit
@@ -72,6 +72,9 @@ jobs:
     name: Gitleaks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -82,6 +85,7 @@ jobs:
       - name: Scan for secrets
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
+          # Required by gitleaks-action for pull_request scans; comments remain disabled.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
 

@@ -20,9 +20,6 @@ reviews:
   suggested_labels: false
   prompt_for_ai_agents: true
   path_filters:
-    - "!uv.lock"
-    - "!dist/**"
-    - "!build/**"
     - "!*.egg-info/**"
     - "!**/__pycache__/**"
     - "src/**"
@@ -32,6 +29,7 @@ reviews:
     - "pyproject.toml"
     - "README.md"
     - "AGENTS.md"
+    - "SECURITY.md"
   path_instructions:
     - path: "src/**"
       instructions: |

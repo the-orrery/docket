@@ -34,4 +34,4 @@ reviews:
       description: In GitHub Actions changes, flag broad token permissions, unpinned action references, credential persistence, or pull_request workflows that can expose secrets.
 
 pr_descriptions:
-  enabled: true
+  generate: true
