@@ -1,0 +1,72 @@
+[build-system]
+# uv_build: 纯 Python 甜区。命中 C/Rust 扩展 / build hook / VCS 动态版本 /
+# 隐式 namespace 包(无 __init__.py) 任一 → 换 hatchling。
+requires = ["uv_build>=0.11.19,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "docket"
+version = "0.9.5"
+description = "Local-first project management CLI for file-backed issue tracking"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Eridanus" }]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Bug Tracking",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "typer>=0.12",
+    # textual: 人壳 TUI (pm / docket ui) 的核心依赖。一份安装同时服务 agent(docket)
+    # 和人(pm)两条 lane,且 ui 模块在命令体内懒加载 → 核心依赖最省心,不做 optional extra。
+    "textual>=0.86",
+    "pydantic-settings>=2.0",
+    "structlog>=24.0",
+]
+
+# 两个 console script,一个核心(见 README「两个入口,一个核心」)。各自的 main 内置
+# 带 telemetry tee + 异常语义的 run_wrapped;不是模版的 cli:run。
+[project.scripts]
+docket = "docket.cli:main_docket"
+pm = "docket.cli:main_pm"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-randomly",
+    "poethepoet",
+]
+freeze = ["pyinstaller>=6.0"]
+
+[tool.poe.tasks]
+lint = "uvx ruff@0.15.16 check ."
+fmt = "uvx ruff@0.15.16 format ."
+typecheck = "pyrefly check"
+test = "pytest"
+check = { sequence = ["lint", "typecheck", "test"], help = "lint + typecheck + test" }
+freeze = { cmd = "pyinstaller --onefile --clean --name docket src/docket/cli.py", help = "打单文件 binary 到 dist/" }
+
+# Repo-specific ruff overrides. CI runs the same local configuration with
+# `uvx ruff@0.15.16 check .`.
+[tool.ruff.lint]
+# TRY003: docket raises one DocketError(message) with the message built at the
+# raise site — a deliberate single-exception CLI design (see errors.py), not the
+# message-in-subclass pattern TRY003 wants. Carved out wholesale, not per-call.
+extend-ignore = ["TRY003"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+# ARG: tests depend on the `repo` fixture for its setup side-effect (it sets
+# DOCKET_ROOT) without using the returned value — a normal pytest idiom.
+"tests/**" = ["ARG"]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
