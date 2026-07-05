@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+
+version: 1
+reviews:
+  enabled: true
+  sensitivity: medium
+  incremental_commits: true
+  check_drafts: false
+  architecture_diagrams: false
+  external_contributors_require_manual_review: false
+  resolve_threads_when_addressed: true
+  auto_approve_behavior: disabled
+  auto_approve: disabled
+  auto_ultrareview: disabled
+  custom_instructions: |
+    Review docket as a local-first Python CLI. Use AGENTS.md, README.md, and docs/architecture.md as the source of truth. Prioritize correctness, data safety, CLI compatibility, tests, and documentation drift. Do not request changes for style-only points already covered by ruff.
+  ignore:
+    files:
+      - uv.lock
+      - dist/**
+      - build/**
+      - "*.egg-info/**"
+      - "**/__pycache__/**"
+    pr_labels:
+      - skip-review
+      - no-ai-review
+    max_changed_lines: 3000
+  custom_rules:
+    - name: CLI behavior and docs stay in sync
+      description: If a command, flag, default, output contract, or visible error changes, verify that README.md and the relevant docs under docs/ are updated in the same PR.
+    - name: File-backed PM data safety
+      description: Flag changes that can corrupt issue frontmatter, comments, project files, or automatic git commit behavior without focused tests using a temporary DOCKET_ROOT.
+    - name: Workflow supply-chain hardening
+      description: In GitHub Actions changes, flag broad token permissions, unpinned action references, credential persistence, or pull_request workflows that can expose secrets.
+
+pr_descriptions:
+  enabled: true

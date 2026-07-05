@@ -31,9 +31,7 @@ def git_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     _git(tmp_path, "config", "user.email", "docket-test@example.invalid")
 
     (tmp_path / "issues" / "ISSUE-1.md").write_text("issue v1\n", encoding="utf-8")
-    (tmp_path / "comments" / "ISSUE-1.md").write_text(
-        "comment v1\n", encoding="utf-8"
-    )
+    (tmp_path / "comments" / "ISSUE-1.md").write_text("comment v1\n", encoding="utf-8")
     (tmp_path / "projects" / "pm.md").write_text("project v1\n", encoding="utf-8")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-m", "seed")
@@ -42,9 +40,7 @@ def git_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_sync_sweeps_project_markdown_stray_writes(git_repo: Path) -> None:
     (git_repo / "issues" / "ISSUE-1.md").write_text("issue v2\n", encoding="utf-8")
-    (git_repo / "comments" / "ISSUE-1.md").write_text(
-        "comment v2\n", encoding="utf-8"
-    )
+    (git_repo / "comments" / "ISSUE-1.md").write_text("comment v2\n", encoding="utf-8")
     (git_repo / "projects" / "pm.md").write_text("project v2\n", encoding="utf-8")
 
     swept = catch_up_stray_writes()

@@ -338,9 +338,7 @@ def test_validate_flags_bad_triage(repo):
 # ---- ⑦ default_comment_actor env-name fix ----
 
 
-@pytest.mark.parametrize(
-    "marker", ["CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "AI_AGENT"]
-)
+@pytest.mark.parametrize("marker", ["CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "AI_AGENT"])
 def test_default_actor_detects_claude_markers(repo, monkeypatch, marker):
     monkeypatch.setenv(marker, "1")
     assert default_comment_actor() == "claude"

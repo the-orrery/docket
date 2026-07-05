@@ -265,6 +265,7 @@ class PMUI(App):
     @staticmethod
     def _load_multi(roots):
         import os
+
         all_issues = []
         by_key = {}
         ordered = []
@@ -279,6 +280,7 @@ class PMUI(App):
                 pass
         os.environ.pop("DOCKET_ROOT", None)
         from .issue import id_num
+
         all_issues.sort(key=lambda is_: id_num(is_.id())[0])
         return by_key, ordered, all_issues
 
@@ -297,8 +299,7 @@ class PMUI(App):
         return sum(
             1
             for i in self.by_project.get(key, [])
-            if i.state_type() in ("started", "unstarted")
-            and not i.is_triage()
+            if i.state_type() in ("started", "unstarted") and not i.is_triage()
         )
 
     def _sort_projects_by_activity(self):
@@ -313,14 +314,10 @@ class PMUI(App):
         # triage (un-accepted) proposals are off every work bucket; they live in
         # their own 「待审」桶 (active = un-TTL-expired) until accept/decline (ADR-008).
         started = [
-            i
-            for i in self.issues
-            if i.state_type() == "started" and not i.is_triage()
+            i for i in self.issues if i.state_type() == "started" and not i.is_triage()
         ]
         backlog = [
-            i
-            for i in self.issues
-            if i.state_type() == "backlog" and not i.is_triage()
+            i for i in self.issues if i.state_type() == "backlog" and not i.is_triage()
         ]
         todo = [
             i
@@ -565,7 +562,9 @@ class PMUI(App):
         mine = self.by_project.get(key, [])
         done, total = progress_counts(mine)
         prefix = p.prefix or key
-        meta = f"{prefix} · {p.title}\nproject · {p.status or '—'} · {done}/{total} done"
+        meta = (
+            f"{prefix} · {p.title}\nproject · {p.status or '—'} · {done}/{total} done"
+        )
         body = _project_body_for_panel(p.body) or "_(无项目说明)_"
         self.query_one("#proj-meta", Static).update(meta)
         self.query_one("#proj-md", Markdown).update(body)
@@ -878,7 +877,9 @@ class PMUI(App):
             1 for i in self.issues if i.state_type() == "started" and not i.is_triage()
         )
         unstarted = [
-            i for i in self.issues if i.state_type() == "unstarted" and not i.is_triage()
+            i
+            for i in self.issues
+            if i.state_type() == "unstarted" and not i.is_triage()
         ]
         backlog = sum(
             1 for i in self.issues if i.state_type() == "backlog" and not i.is_triage()
@@ -1203,7 +1204,9 @@ def _selftest():  # noqa: PLR0915  # a linear sequence of pilot-driven UI assert
                 await pilot.pause()
                 pbody = md._markdown
                 expected = _project_body_for_panel(proj_item.project.body)
-                assert pbody == expected, "proj-md != reordered project body on highlight"
+                assert pbody == expected, (
+                    "proj-md != reordered project body on highlight"
+                )
                 assert app.current_issue_id is None, (
                     "current_issue_id not None while browsing a project"
                 )
@@ -1338,7 +1341,9 @@ def _selftest():  # noqa: PLR0915  # a linear sequence of pilot-driven UI assert
             )
             c_rel = app._last_detail["proj"]["relations"]
             assert "父任务" in c_rel, f"child detail missing 父任务: {c_rel[:80]!r}"
-            app.save_screenshot(_selftest_screenshot_path("docket_children2.svg"))  # 注:此处 md 为子任务详情
+            app.save_screenshot(
+                _selftest_screenshot_path("docket_children2.svg")
+            )  # 注:此处 md 为子任务详情
 
             await pilot.press("[")
             await pilot.pause()
@@ -1394,7 +1399,11 @@ def _selftest():  # noqa: PLR0915  # a linear sequence of pilot-driven UI assert
                 f"全部 桶 has {len(open_rows)} rows, want {n_open_expected}"
             )
             otarget = next(
-                (idx for idx, c in enumerate(mid2.children) if isinstance(c, IssueItem)),
+                (
+                    idx
+                    for idx, c in enumerate(mid2.children)
+                    if isinstance(c, IssueItem)
+                ),
                 None,
             )
             if otarget is not None:
