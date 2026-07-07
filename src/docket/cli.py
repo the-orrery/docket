@@ -27,6 +27,7 @@ from .errors import DocketError, ExitSignal
 from .gitops import cmd_history, cmd_sync
 from .issue import cn_now, find_repo_root, id_num, normalize_id
 from .telemetry import STDERR_CAP, STDOUT_CAP, Tee
+from orrery_heartbeat import check_update
 
 _click_exc = _typer_click.exceptions
 
@@ -739,6 +740,7 @@ def _consume_tier(argv: list[str]) -> list[str]:
 
 def main_docket() -> None:
     """`docket` entry point: explicit, agent/script-facing. argv -> verb, no magic."""
+    check_update("docket", "the-orrery/docket")
     _relax_std_encoding()
     argv = _consume_tier(sys.argv[1:])
     _maybe_launch_ui(argv)
@@ -755,6 +757,7 @@ def main_pm() -> None:
     """`pm` entry point: ergonomic human shell. Bare `pm` = overview; `pm <key>`
     = drill that project; `pm <id>` = print the issue's file path; anything else
     passes through to the normal verbs."""
+    check_update("docket", "the-orrery/docket")
     _relax_std_encoding()
     argv = _consume_tier(sys.argv[1:])
     _maybe_launch_ui(argv)

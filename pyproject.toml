@@ -26,6 +26,7 @@ dependencies = [
     "textual>=0.86",
     "pydantic-settings>=2.0",
     "structlog>=24.0",
+    "orrery-heartbeat @ git+https://github.com/the-orrery/orrery-heartbeat.git",
 ]
 
 # 两个 console script,一个核心(见 README「两个入口,一个核心」)。各自的 main 内置
