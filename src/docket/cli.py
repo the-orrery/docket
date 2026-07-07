@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 import typer
+from orrery_heartbeat import check_update
 from typer import _click as _typer_click  # typer 0.26 vendors click here
 from typer.core import TyperGroup
 
@@ -27,7 +28,6 @@ from .errors import DocketError, ExitSignal
 from .gitops import cmd_history, cmd_sync
 from .issue import cn_now, find_repo_root, id_num, normalize_id
 from .telemetry import STDERR_CAP, STDOUT_CAP, Tee
-from orrery_heartbeat import check_update
 
 _click_exc = _typer_click.exceptions
 
