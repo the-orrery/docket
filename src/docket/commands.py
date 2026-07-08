@@ -374,7 +374,11 @@ def _print_blocks_line(is_, all_issues):
 
 
 def cmd_show(  # noqa: C901, PLR0912
-    id_, no_comments, *, all_comments=False, comment_idx=None,
+    id_,
+    no_comments,
+    *,
+    all_comments=False,
+    comment_idx=None,
 ):
     is_ = load_by_id(id_)
     projects, _ = load_projects()
@@ -451,9 +455,9 @@ def _parse_comment_blocks(id_, root=None):
     except OSError:
         return []
     if text.startswith("---\n"):
-        end = text[len("---\n"):].find("\n---\n")
+        end = text[len("---\n") :].find("\n---\n")
         if end >= 0:
-            text = text[len("---\n") + end + len("\n---\n"):]
+            text = text[len("---\n") + end + len("\n---\n") :]
     idx = index_of_heading(text, "## ")
     if idx < 0:
         return []
