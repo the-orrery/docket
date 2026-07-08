@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .errors import DocketError
 from .fsops import atomic_write_file as _atomic_write_file
-from .issue import find_repo_root, load_by_id, normalize_id
+from .issue import find_repo_root, load_by_id
 
 # Backoff for transient git lock contention (index.lock / ref lock) when
 # concurrent docket writers commit at once.
@@ -174,9 +174,8 @@ def cmd_sync() -> None:
 def cmd_history(id_: str) -> None:
     """Print the commit history of an issue (and its comments) — the audit trail
     produced by per-write auto-commits."""
-    id_ = normalize_id(id_)
     root = find_repo_root()
-    load_by_id(id_)  # ensure the issue exists (raises if not)
+    id_ = load_by_id(id_).id()  # ensure the issue exists (raises if not)
     issue_rel = str(Path("issues") / (id_ + ".md"))
     comment_rel = str(Path("comments") / (id_ + ".md"))
     proc = subprocess.run(

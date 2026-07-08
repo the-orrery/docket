@@ -10,10 +10,12 @@ Table-render helpers (pad/print_table/sort_by_priority/clip_runes/display_id)
 live in render.py / issue.py / projects.py; only issue_rows is local here.
 """
 
+import contextlib
 import json
 import os
 import re
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -28,13 +30,16 @@ from .issue import (
     id_num,
     id_prefix,
     issues_dir,
+    issue_refs,
     load_all,
     load_by_id,
     max_id,
-    normalize_id,
+    new_uid,
+    next_project_iid,
     parse_batch,
     parse_bool,
     quote_scalar,
+    resolve_issue_ref,
     sort_by_priority,
     today,
     unquote_scalar,
@@ -57,6 +62,7 @@ from .states import (
     valid_priority,
     valid_state_type,
 )
+from .tiers import load_tiers
 from .worktree_gate import ensure_worktrees_reconciled
 
 # ---- dependency edges (blocked_by) ----
@@ -613,15 +619,14 @@ def _resolve_edge_refs(is_id, refs):
     """Normalize + validate blocked_by refs: each must exist and not be self."""
     out = []
     for ref in refs:
-        rid = normalize_id(ref)
-        if rid == is_id:
-            raise DocketError("blocked_by cannot reference the issue itself")
         try:
-            load_by_id(rid)
+            rid = load_by_id(ref).id()
         except DocketError:
             raise DocketError(
-                f'blocked_by "{rid}" does not reference an existing issue'
+                f'blocked_by "{ref}" does not reference an existing issue'
             ) from None
+        if rid == is_id:
+            raise DocketError("blocked_by cannot reference the issue itself")
         if rid not in out:
             out.append(rid)
     return out
@@ -750,12 +755,11 @@ def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)  # noqa:
     # F3: parent — verify it exists and isn't self; field value = the id, else "~".
     parent_val = "~"
     if parent is not None and parent != "":
-        pid = normalize_id(parent)
         try:
-            load_by_id(pid)
+            pid = load_by_id(parent).id()
         except DocketError:
             raise DocketError(
-                f'parent "{pid}" does not reference an existing issue'
+                f'parent "{parent}" does not reference an existing issue'
             ) from None
         parent_val = pid
 
@@ -779,11 +783,13 @@ def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)  # noqa:
 
     issues = load_all()
     d = today()
+    project_iid = str(next_project_iid(issues, project))
 
     is_ = Issue()
     is_.fields = [
         ["domain", "pm"],
         ["id", ""],  # set in the claim loop below
+        ["uid", new_uid()],
         ["title", quote_scalar(title)],
         ["description", quote_scalar(title)],
         ["keywords", "[pm]"],
@@ -792,6 +798,7 @@ def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)  # noqa:
         ["state_type", new_state_type],
         ["priority", priority],
         ["project", quote_scalar(project)],
+        ["project_iid", project_iid],
     ]
     # batch/milestone/wake live between project and parent (logical grouping).
     if batch_val != "":
@@ -841,6 +848,8 @@ def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)  # noqa:
             n += 1
             continue  # id taken (possibly by a concurrent writer) — try next
         try:
+            projects, _ = load_projects()
+            is_.set_aliases([id_, display_id(is_, projects)])
             os.write(fd, is_.render().encode("utf-8", "surrogateescape"))
         finally:
             os.close(fd)
@@ -1128,7 +1137,21 @@ def cmd_set(  # mirrors the `set` CLI flag surface 1:1 (port of set.go)  # noqa:
         changed.append("priority")
 
     if project is not None:
+        by_key, _ = load_projects()
+        if project != "" and project not in by_key:
+            raise DocketError(
+                f'project "{project}" is not registered (no projects/{project}.md)'
+            )
+        old_project = is_.project()
+        old_display = display_id(is_, by_key)
+        old_aliases = [*is_.aliases(), is_.id(), old_display]
         is_.set("project", quote_scalar(project))
+        if project != old_project or is_.project_iid() is None:
+            siblings = [item for item in load_all() if item.id() != is_.id()]
+            is_.set_after(
+                "project_iid", str(next_project_iid(siblings, project)), "project"
+            )
+        is_.set_aliases([*old_aliases, display_id(is_, by_key)])
         changed.append("project")
 
     if batch is not None:
@@ -1165,15 +1188,9 @@ def cmd_set(  # mirrors the `set` CLI flag surface 1:1 (port of set.go)  # noqa:
         changed.append("title")
 
     if parent is not None:
-        pid = normalize_id(parent)
+        pid = load_by_id(parent).id()
         if pid == is_.id():
             raise DocketError(f'parent "{pid}" cannot reference the issue itself')
-        try:
-            load_by_id(pid)
-        except DocketError:
-            raise DocketError(
-                f'parent "{pid}" does not reference an existing issue'
-            ) from None
         is_.set("parent", pid)
         changed.append("parent")
 
@@ -1183,7 +1200,10 @@ def cmd_set(  # mirrors the `set` CLI flag surface 1:1 (port of set.go)  # noqa:
             if rid not in cur:
                 cur.append(rid)
         for ref in unblock or []:
-            rid = normalize_id(ref)
+            try:
+                rid = load_by_id(ref).id()
+            except DocketError:
+                rid = ref
             if rid not in cur:
                 raise DocketError(f"{is_.id()} is not blocked by {rid}")
             cur.remove(rid)
@@ -1371,8 +1391,7 @@ def cmd_comment(  # noqa: PLR0913
     """Append a comment block to <root>/comments/ISSUE-<n>.md (creating it with
     frontmatter if absent). --amend replaces the last block with new text;
     --delete-last drops the last block. Block: "## <time> · <actor>" + body."""
-    id_ = normalize_id(id_)
-    load_by_id(id_)  # issue must exist (so we don't create orphan comment files)
+    id_ = load_by_id(id_).id()  # issue must exist (so we don't create orphan comments)
     root = find_repo_root()
     dir_ = str(Path(root) / "comments")
     path = str(Path(dir_) / (id_ + ".md"))
@@ -1418,6 +1437,193 @@ def cmd_comment(  # noqa: PLR0913
     print(f"appended comment to {Path(path).name}")
 
 
+# ---- identity v3 ----
+
+
+@dataclass(frozen=True)
+class _ResolvedIssue:
+    issue: Issue
+    projects: dict
+    root: str
+    tier: str
+
+
+def cmd_resolve(ref: str, as_json: bool = False) -> None:
+    """Resolve a uid/display ref/alias/legacy id to the storage issue record."""
+    resolved = _resolve_with_configured_tiers(ref)
+    is_ = resolved.issue
+    projects = resolved.projects
+    payload = {
+        "uid": is_.uid(),
+        "id": is_.id(),
+        "display_ref": display_id(is_, projects),
+        "aliases": is_.aliases(),
+        "project": is_.project(),
+        "project_iid": is_.project_iid(),
+        "status": is_.status(),
+        "state_type": is_.state_type(),
+        "path": is_.path,
+        "root": resolved.root,
+        "tier": resolved.tier,
+        "title": is_.title(),
+    }
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    rows = [
+        [
+            key,
+            ""
+            if value is None
+            else json.dumps(value, ensure_ascii=False)
+            if isinstance(value, list)
+            else str(value),
+        ]
+        for key, value in payload.items()
+    ]
+    print_table(rows, ["field", "value"])
+
+
+def _resolve_with_configured_tiers(ref: str) -> _ResolvedIssue:
+    tiers = load_tiers()
+    current_root = ""
+    current_error: DocketError | None = None
+    try:
+        issues = load_all()
+        projects, _ = load_projects()
+        current_root = find_repo_root()
+        return _ResolvedIssue(
+            issue=resolve_issue_ref(ref, issues, projects),
+            projects=projects,
+            root=current_root,
+            tier=_tier_for_root(current_root, tiers),
+        )
+    except DocketError as exc:
+        if "ambiguous issue ref" in exc.message:
+            raise
+        current_error = exc
+        with contextlib.suppress(DocketError):
+            current_root = find_repo_root()
+
+    matches: list[_ResolvedIssue] = []
+    tier_errors: list[str] = []
+    seen_roots: set[Path] = set()
+    if current_root:
+        seen_roots.add(Path(current_root).expanduser().resolve())
+    for tier, root in tiers.items():
+        root_path = Path(root).expanduser()
+        if not root_path.is_dir():
+            continue
+        resolved_root = root_path.resolve()
+        if resolved_root in seen_roots:
+            continue
+        seen_roots.add(resolved_root)
+        try:
+            matches.append(_resolve_in_root(ref, str(resolved_root), tier))
+        except DocketError as exc:
+            if "ambiguous issue ref" in exc.message:
+                tier_errors.append(f"{tier}: {exc.message}")
+
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        candidates = ", ".join(_resolved_label(item) for item in matches)
+        raise DocketError(
+            f"{ref}: ambiguous issue ref across tiers; candidates: {candidates}"
+        )
+    if tier_errors:
+        raise DocketError(
+            f"{ref}: ambiguous issue ref in configured tiers; " + "; ".join(tier_errors)
+        )
+    if current_error is not None:
+        raise current_error
+    raise DocketError(f"issue {ref} not found")
+
+
+def _resolve_in_root(ref: str, root: str, tier: str) -> _ResolvedIssue:
+    old_root = os.environ.get("DOCKET_ROOT")
+    os.environ["DOCKET_ROOT"] = root
+    try:
+        issues = load_all()
+        projects, _ = load_projects()
+        return _ResolvedIssue(
+            issue=resolve_issue_ref(ref, issues, projects),
+            projects=projects,
+            root=find_repo_root(),
+            tier=tier,
+        )
+    finally:
+        if old_root is None:
+            os.environ.pop("DOCKET_ROOT", None)
+        else:
+            os.environ["DOCKET_ROOT"] = old_root
+
+
+def _tier_for_root(root: str, tiers: dict[str, str]) -> str:
+    root_path = Path(root).expanduser().resolve()
+    for tier, configured in tiers.items():
+        if Path(configured).expanduser().resolve() == root_path:
+            return tier
+    return ""
+
+
+def _resolved_label(item: _ResolvedIssue) -> str:
+    label = display_id(item.issue, item.projects)
+    scope = item.tier or item.root
+    uid = f" uid={item.issue.uid()}" if item.issue.uid() else ""
+    return f"{scope}:{label} ({item.issue.id()}){uid}"
+
+
+def _stamp_identity(is_, projects, next_by_project: dict[str, int]) -> bool:
+    changed = False
+    aliases = [*is_.aliases(), is_.id(), display_id(is_, projects)]
+    if not is_.uid():
+        is_.set_after("uid", new_uid(), "id")
+        changed = True
+    if is_.project_iid() is None:
+        project = is_.project()
+        next_by_project[project] = next_by_project.get(project, 0) + 1
+        is_.set_after("project_iid", str(next_by_project[project]), "project")
+        changed = True
+    aliases.append(display_id(is_, projects))
+    before_aliases = is_.aliases()
+    is_.set_aliases(aliases)
+    if is_.aliases() != before_aliases:
+        changed = True
+    return changed
+
+
+def cmd_migrate_identity(dry_run: bool = False) -> None:
+    """Stamp uid/project_iid/aliases onto every issue that lacks identity v3."""
+    issues = load_all()
+    projects, _ = load_projects()
+    next_by_project: dict[str, int] = {}
+    for is_ in issues:
+        iid = is_.project_iid()
+        if iid is not None:
+            next_by_project[is_.project()] = max(
+                next_by_project.get(is_.project(), 0), iid
+            )
+
+    changed = []
+    for is_ in issues:
+        if _stamp_identity(is_, projects, next_by_project):
+            changed.append(is_)
+
+    if dry_run:
+        print(f"identity migration: would update {len(changed)} issue(s)")
+        for is_ in changed:
+            print(
+                f"- {is_.id()} -> uid={is_.uid()} display={display_id(is_, projects)}"
+            )
+        return
+
+    for is_ in changed:
+        is_.write()
+        auto_commit(is_.path, f"pm(docket): {is_.id()} identity v3 stamp")
+    print(f"identity migration: updated {len(changed)} issue(s)")
+
+
 # ---- roundtrip ----
 
 
@@ -1455,6 +1661,9 @@ def collect_validation_problems(issues, strict=False):  # noqa: C901, PLR0912, P
         ids[is_.id()] = True
     projects, _ = load_projects()
     problems = []
+    uid_index: dict[str, list[str]] = {}
+    project_iid_index: dict[tuple[str, int], list[str]] = {}
+    ref_index: dict[str, list[str]] = {}
     for is_ in issues:
         name = Path(is_.path).name
         # required fields (id/title/status/state_type) — present and non-empty
@@ -1471,6 +1680,26 @@ def collect_validation_problems(issues, strict=False):  # noqa: C901, PLR0912, P
         expected = is_.id() + ".md"
         if is_.id() != "" and expected != name:
             problems.append(f'{name}: filename does not match id "{is_.id()}"')
+        # identity v3: uid is machine identity; project_iid is the human counter.
+        uid = is_.uid()
+        if uid == "":
+            problems.append(f'{name}: missing/empty required field "uid"')
+        elif not re.fullmatch(r"dkt_[0-9a-f]{32}", uid):
+            problems.append(f'{name}: invalid uid "{uid}" (want dkt_<32 hex chars>)')
+        else:
+            uid_index.setdefault(uid, []).append(is_.id())
+        iid = is_.project_iid()
+        if iid is None:
+            problems.append(
+                f"{name}: missing/invalid project_iid (want a positive integer)"
+            )
+        else:
+            project_iid_index.setdefault((is_.project(), iid), []).append(is_.id())
+        refs = issue_refs(is_, projects)
+        if len(refs) != len(set(refs)):
+            problems.append(f"{name}: aliases contain duplicate refs")
+        for ref in refs:
+            ref_index.setdefault(ref.lower(), []).append(is_.id())
         # state_type valid
         st = is_.state_type()
         if st != "" and not valid_state_type(st):
@@ -1609,6 +1838,18 @@ def collect_validation_problems(issues, strict=False):  # noqa: C901, PLR0912, P
                 color[nxt] = 1
                 stack.append((nxt, iter(graph[nxt])))
                 path.append(nxt)
+    for uid, owners in uid_index.items():
+        if len(owners) > 1:
+            problems.append(f'uid "{uid}" is reused by {", ".join(owners)}')
+    for (project, iid), owners in project_iid_index.items():
+        if len(owners) > 1:
+            scope = project or "<empty-project>"
+            problems.append(
+                f'project_iid "{scope}-{iid}" is reused by {", ".join(owners)}'
+            )
+    for ref, owners in ref_index.items():
+        if len(set(owners)) > 1:
+            problems.append(f'ref "{ref}" is ambiguous across {", ".join(owners)}')
     problems.sort()
     return problems
 
@@ -2140,9 +2381,8 @@ _ORPHAN_SUBJ_CLIP = 44
 def _known_prefixes(projects) -> set[str]:
     """Issue-id prefixes worth matching in commit messages: every registered
     project's display prefix plus the canonical id prefix. Restricting to REAL
-    prefixes is what keeps non-issue tokens out of the match set — the number is
-    the true anchor, so a naive `[A-Z]+-\\d+` would let UTF-8 / SHA-256 / ADR-008
-    normalize onto whatever issue shares that number."""
+    prefixes is what keeps non-issue tokens out of the match set; matches are
+    resolved through identity v3 rather than by reusing the numeric suffix."""
     prefixes = {id_prefix()}
     for p in projects.values():
         if p.prefix:
@@ -2163,10 +2403,11 @@ def _scan_commit_refs(records, ref_re) -> dict[str, list[tuple[str, str]]]:
     commit naming the same issue twice counts once."""
     refs: dict[str, list[tuple[str, str]]] = {}
     for h, subj, body in records:
-        seen = {
-            normalize_id(f"{m.group(1)}-{m.group(2)}")
-            for m in ref_re.finditer(f"{subj}\n{body}")
-        }
+        seen = set()
+        for m in ref_re.finditer(f"{subj}\n{body}"):
+            token = f"{m.group(1)}-{m.group(2)}"
+            with contextlib.suppress(DocketError):
+                seen.add(load_by_id(token).id())
         for cid in seen:
             refs.setdefault(cid, []).append((h, subj))
     return refs
@@ -2212,9 +2453,10 @@ def cmd_orphans(repo="", limit=200, as_json=False):
     --repo scans another path. The open-issue set comes from the docket data repo
     ($DOCKET_ROOT), decoupled from --repo. --limit caps how many recent commits
     are scanned (default 200) so this stays a『最近提交』check, not a full-history
-    sweep. Only real project prefixes (+ the canonical id prefix) are matched, so
-    non-issue tokens (UTF-8 / SHA-256 / ADR-008) never false-positive. --json
-    emits the records for agent fan-out.
+    sweep. Only real project prefixes (+ the legacy storage id prefix) are matched,
+    and each match is resolved through `docket resolve` semantics, so non-issue
+    tokens (UTF-8 / SHA-256 / ADR-008) never false-positive. --json emits the
+    records for agent fan-out.
 
     Non-goal (v0): the reverse — open issues with NO commit at all (空转) — which
     needs a full-history scan and is far noisier (backlog items legitimately have

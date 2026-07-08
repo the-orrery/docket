@@ -8,6 +8,7 @@ only re-render a value when a caller explicitly changes it.
 
 import os
 import re
+import uuid
 from datetime import datetime, timedelta, timezone
 from difflib import get_close_matches
 from pathlib import Path
@@ -32,6 +33,35 @@ def quote_scalar(s: str) -> str:
     s = s.replace("\\", "\\\\")
     s = s.replace('"', '\\"')
     return '"' + s + '"'
+
+
+def parse_flow_list(s: str) -> list[str]:
+    """Parse docket's simple flow-list fields (``[A, B]``) into strings."""
+    raw = s.strip()
+    if raw == "" or raw == "[]":
+        return []
+    if raw.startswith("[") and raw.endswith("]"):
+        raw = raw[1:-1]
+    return [
+        part.strip().strip('"').strip("'") for part in raw.split(",") if part.strip()
+    ]
+
+
+def unique_refs(refs) -> list[str]:
+    """Return refs de-duplicated in first-seen order, dropping blanks."""
+    seen = set()
+    out = []
+    for ref in refs:
+        value = str(ref or "").strip()
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        out.append(value)
+    return out
+
+
+def format_flow_list(refs) -> str:
+    return "[" + ", ".join(unique_refs(refs)) + "]"
 
 
 _FM_LINE_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):(?:[ \t]+(.*))?$")
@@ -131,6 +161,33 @@ class Issue:
     def id(self) -> str:
         v, _ = self.get("id")
         return v.strip()
+
+    def uid(self) -> str:
+        v, _ = self.get("uid")
+        return v.strip()
+
+    def aliases(self) -> list[str]:
+        v, ok = self.get("aliases")
+        if not ok:
+            return []
+        return parse_flow_list(v)
+
+    def set_aliases(self, refs) -> None:
+        cleaned = unique_refs(refs)
+        if not cleaned:
+            self.remove("aliases")
+            return
+        self.set_after("aliases", format_flow_list(cleaned), "uid")
+
+    def project_iid(self):
+        v, ok = self.get("project_iid")
+        if not ok:
+            return None
+        try:
+            n = int(v.strip())
+        except ValueError:
+            return None
+        return n if n > 0 else None
 
     def title(self) -> str:
         v, _ = self.get("title")
@@ -243,17 +300,14 @@ class Issue:
         v, ok = self.get("blocked_by")
         if not ok:
             return []
-        s = v.strip()
-        if s.startswith("[") and s.endswith("]"):
-            s = s[1:-1]
-        return [normalize_id(p) for p in (x.strip() for x in s.split(",")) if p]
+        return [normalize_id(p) for p in parse_flow_list(v)]
 
     def set_blocked_by(self, ids) -> None:
         """Write the blocked_by list (after parent); drop the field when empty."""
         if not ids:
             self.remove("blocked_by")
             return
-        self.set_after("blocked_by", "[" + ", ".join(ids) + "]", "parent")
+        self.set_after("blocked_by", format_flow_list(ids), "parent")
 
 
 def _parse_fm(is_: Issue, block: str, base: str) -> None:
@@ -347,6 +401,17 @@ def id_prefix() -> str:
 
 
 _ANY_PREFIX_ID_RE = re.compile(r"^[A-Za-z]+-(\d+)$")
+_BARE_NUMBER_RE = re.compile(r"^\d+$")
+_UID_RE = re.compile(r"^dkt_[0-9a-f]{32}$")
+
+
+def new_uid() -> str:
+    """Return a machine-stable docket uid for a newly minted or migrated issue."""
+    return f"dkt_{uuid.uuid4().hex}"
+
+
+def is_uid(ref: str) -> bool:
+    return _UID_RE.fullmatch(ref.strip()) is not None
 
 
 def id_num(id_: str):
@@ -360,12 +425,12 @@ def id_num(id_: str):
 
 
 def normalize_id(s: str) -> str:
-    """Map any way of writing an issue id to the canonical "<prefix>-N" (where
-    <prefix> is id_prefix()): a bare number, the default prefix in any case, or
-    any project-prefixed display form ("CORE-286", "WEB-1"). The number is the
-    true anchor and project prefixes are display-only aliases, so they all
-    resolve to the same on-disk canonical id. Non-id strings are returned
-    unchanged."""
+    """Legacy normalization to the storage id prefix.
+
+    New command entry points should use ``load_by_id`` / ``resolve_issue_ref`` so
+    uid, project-local display refs, and aliases are honored. This helper remains
+    for legacy storage-id sorting, suggestions, and old tests.
+    """
     s = s.strip()
     m = _ANY_PREFIX_ID_RE.match(s)
     if m is not None:
@@ -405,6 +470,54 @@ def load_all():
     return issues
 
 
+def _issue_display_ref(is_: Issue, projects) -> str:
+    """Compute the current human ref.
+
+    With identity v3, project_iid is the project-local human number. Older data
+    without project_iid falls back to the legacy global id number so existing PM
+    roots remain readable before migration.
+    """
+    p = projects.get(is_.project())
+    if p is None or p.prefix == "":
+        return is_.id()
+    iid = is_.project_iid()
+    if iid is not None:
+        return f"{p.prefix}-{iid}"
+    n, ok = id_num(is_.id())
+    return f"{p.prefix}-{n}" if ok else is_.id()
+
+
+def issue_refs(is_: Issue, projects=None) -> list[str]:
+    """All stable refs that should resolve to this issue."""
+    if projects is None:
+        from .projects import load_projects
+
+        projects, _ = load_projects()
+    refs = [is_.uid(), is_.id(), _issue_display_ref(is_, projects), *is_.aliases()]
+    return unique_refs(refs)
+
+
+def _known_display_prefixes(projects) -> set[str]:
+    prefixes = {id_prefix()}
+    for p in projects.values():
+        if p.prefix:
+            prefixes.add(p.prefix)
+    return prefixes
+
+
+def _format_candidates(issues, projects) -> str:
+    labels = []
+    for is_ in issues:
+        display = _issue_display_ref(is_, projects)
+        label = display
+        if display != is_.id():
+            label = f"{display} ({is_.id()})"
+        if is_.uid():
+            label = f"{label} uid={is_.uid()}"
+        labels.append(label)
+    return ", ".join(labels)
+
+
 def _closest_ids(id_: str, existing: list[str]) -> list[str]:
     """Nearest existing canonical ids for a not-found lookup. The shared
     "<prefix>-" stays in the character ratio, so a fat-finger number or a
@@ -413,16 +526,81 @@ def _closest_ids(id_: str, existing: list[str]) -> list[str]:
     return get_close_matches(id_, existing, n=3, cutoff=0.6)
 
 
+def resolve_issue_ref(ref: str, issues=None, projects=None) -> Issue:
+    """Resolve uid/display ref/alias/legacy id to one Issue.
+
+    Resolution is intentionally fail-closed: exact refs win; legacy foreign
+    prefix fallback only applies when that prefix is not a registered project
+    prefix. Bare numbers remain accepted for old workflows, but they must map to
+    exactly one candidate.
+    """
+    raw = ref.strip()
+    if raw == "":
+        raise DocketError("issue ref is empty")
+    if issues is None:
+        issues = load_all()
+    if projects is None:
+        from .projects import load_projects
+
+        projects, _ = load_projects()
+
+    matches: dict[str, Issue] = {}
+    raw_key = raw.lower()
+    not_found_ref = raw
+    for is_ in issues:
+        for candidate in issue_refs(is_, projects):
+            if candidate.lower() == raw_key:
+                matches[is_.id()] = is_
+
+    if not matches and _BARE_NUMBER_RE.fullmatch(raw):
+        n = int(raw, 10)
+        legacy = f"{id_prefix()}-{n}"
+        not_found_ref = legacy
+        for is_ in issues:
+            if is_.id() == legacy or is_.project_iid() == n:
+                matches[is_.id()] = is_
+
+    if not matches:
+        m = _ANY_PREFIX_ID_RE.match(raw)
+        if m is not None:
+            prefix = raw[: raw.index("-")]
+            registered = {p.lower() for p in _known_display_prefixes(projects)}
+            if prefix.lower() not in registered:
+                legacy = f"{id_prefix()}-{m.group(1)}"
+                not_found_ref = legacy
+                for is_ in issues:
+                    if is_.id() == legacy:
+                        matches[is_.id()] = is_
+
+    if len(matches) == 1:
+        return next(iter(matches.values()))
+    if len(matches) > 1:
+        raise DocketError(
+            f"{raw}: ambiguous issue ref; candidates: {_format_candidates(matches.values(), projects)}"
+        )
+
+    existing_refs = []
+    for is_ in issues:
+        existing_refs.extend(issue_refs(is_, projects))
+    normalized = normalize_id(raw)
+    sugg = _closest_ids(normalized, existing_refs)
+    hint = f". Did you mean: {', '.join(sugg)}?" if sugg else ""
+    raise DocketError(f"issue {not_found_ref} not found{hint}")
+
+
 def load_by_id(id_: str) -> Issue:
-    id_ = normalize_id(id_)
-    d = issues_dir()
-    p = str(Path(d) / (id_ + ".md"))
-    if not Path(p).exists():
-        existing = [pp.stem for pp in Path(d).glob("*.md")]
-        sugg = _closest_ids(id_, existing)
-        hint = f". Did you mean: {', '.join(sugg)}?" if sugg else ""
-        raise DocketError(f"issue {id_} not found{hint}")
-    return parse_issue(p)
+    return resolve_issue_ref(id_)
+
+
+def next_project_iid(issues, project: str) -> int:
+    mx = 0
+    for is_ in issues:
+        if is_.project() != project:
+            continue
+        iid = is_.project_iid()
+        if iid is not None and iid > mx:
+            mx = iid
+    return mx + 1
 
 
 # ---- time (fixed display timezone, UTC+8, not the host's) ----

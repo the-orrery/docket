@@ -60,12 +60,12 @@ def ensure_worktrees_reconciled(is_: Issue, state_type: str) -> None:
 
 
 def _owner_refs(is_: Issue) -> list[str]:
-    refs = [is_.id()]
+    refs = [is_.uid(), is_.id(), *is_.aliases()]
     projects, _problems = load_projects()
     display = display_id(is_, projects)
     if display and display not in refs:
         refs.append(display)
-    return refs
+    return [ref for ref in refs if ref]
 
 
 def _json_payload(text: str) -> dict[str, Any]:

@@ -27,8 +27,9 @@ from . import commands as C
 from . import projects as P
 from .errors import DocketError, ExitSignal
 from .gitops import cmd_history, cmd_sync
-from .issue import cn_now, find_repo_root, id_num, normalize_id
+from .issue import cn_now, find_repo_root, load_by_id
 from .telemetry import STDERR_CAP, STDOUT_CAP, Tee
+from .tiers import load_tiers
 
 _click_exc = _typer_click.exceptions
 
@@ -74,8 +75,9 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     help=(
         "docket — local-first project management CLI.\n\n"
-        "ids accept 286 / DEMO-286 / demo-286 / any project prefix like TEAM-286 "
-        "(the number is the canonical anchor; the prefix is a display label). "
+        "refs accept uid/display/alias/legacy ids like dkt_..., WORK-12, ERI-905, "
+        "or a bare number when unambiguous. Use `docket resolve <ref> --json` "
+        "for machine integration. "
         "batches are positive integers (rolling tranches; see `docket batch` / `docket roll`).\n\n"
         "human shell: `pm` (= 交互 TUI 浏览;`pm ov` 出文本概览) · `pm <key>` (drill a project) · "
         "`pm <id>` (print the issue's file path).\n\n"
@@ -85,14 +87,7 @@ app = typer.Typer(
 
 
 def _load_tiers() -> dict[str, str]:
-    p = Path.home() / ".config/docket/tiers.toml"
-    if not p.exists():
-        return {}
-    import tomllib
-
-    with p.open("rb") as f:
-        data = tomllib.load(f)
-    return {k: str(Path(v).expanduser()) for k, v in data.get("tiers", {}).items()}
+    return load_tiers()
 
 
 # ---- read verbs ----
@@ -183,6 +178,15 @@ def _get(
 def _search(kw: list[str] = typer.Argument(None)):
     """grep issues + comments (title/body/comment), case-insensitive"""
     C.cmd_search(" ".join(kw or []))
+
+
+@app.command("resolve")
+def _resolve(
+    ref: str,
+    json_: bool = typer.Option(False, "--json", help="emit machine-readable JSON"),
+):
+    """resolve uid/display ref/alias/legacy id to one issue"""
+    C.cmd_resolve(ref, as_json=json_)
 
 
 @app.command("tree")
@@ -277,6 +281,14 @@ def _stats():
 def _sync():
     """sweep PM files and artifact repos edited outside docket into history"""
     cmd_sync()
+
+
+@app.command("migrate-identity")
+def _migrate_identity(
+    dry_run: bool = typer.Option(False, "--dry-run", help="show changes only"),
+):
+    """stamp identity-v3 uid/project_iid/aliases onto existing issues"""
+    C.cmd_migrate_identity(dry_run=dry_run)
 
 
 artifact_app = typer.Typer(cls=_SuggestGroup)
@@ -704,6 +716,7 @@ _KNOWN_VERBS = {
     "new",
     "set",
     "search",
+    "resolve",
     "comment",
     "start",
     "finish",
@@ -714,6 +727,7 @@ _KNOWN_VERBS = {
     "history",
     "stats",
     "sync",
+    "migrate-identity",
     "validate",
     "lint",
     "health",
@@ -756,8 +770,11 @@ def _is_project_key(s: str) -> bool:
 
 
 def _is_id(s: str) -> bool:
-    _, ok = id_num(normalize_id(s))
-    return ok
+    try:
+        load_by_id(s)
+    except Exception:
+        return False
+    return True
 
 
 def _relax_std_encoding() -> None:
