@@ -89,8 +89,17 @@ docket overview
 `<id>` 支持 `286`、`DEMO-286`、`demo-286`、`TEAM-286` 这类形式。数字是唯一锚点，
 前缀只用于显示。
 
+canonical issue 文件仍按全局数字保存（例如 `ISSUE-286` / `ERI-905`）。项目 prefix
+是显示层标签（例如 `WORK-905`），用于列表、项目视图、commit/PR/worktree 归属沟通；
+不要把历史 issue 重编号成项目内独立序列。
+
 `docket new --project <key>` 要求 `<key>` 已注册(用 `docket projects new` 建)；
 未注册会直接报错以避免产生孤儿 issue，加 `--new-project` 可在建 issue 时顺手注册。
+
+需求材料、验证脚本、SQL、日志摘录、排障记录、review 证据等需要跨 session 保留的研发资产，
+应放进该 issue 的 artifact repo。`docket new` 会打印 artifact path；需要落材料时执行
+`docket artifact init <id>`，后续用 `docket artifact sync <id>` 把直接编辑收进 artifact
+自身的 Git 历史。PM issue 正文只保留状态、决策和链接。
 
 被外部卡住、暂时推不动的 issue 可以「睡到某天」：`docket set <id> --wake 2026-07-01`。
 wake 在未来时，这条 open issue 从 `active` / `overview` 隐藏（它在睡觉，不占注意力）；

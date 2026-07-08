@@ -233,7 +233,10 @@ def test_new_rejects_unregistered_project(repo):
 
 def test_new_accepts_registered_project(repo, capsys):
     C.cmd_new("ok", "kb", "No priority", None, "", "", "")
-    assert "created" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "created KB-1 (ISSUE-1):" in out
+    assert "artifact:" in out
+    assert "docket artifact init KB-1" in out
 
 
 def test_new_with_new_project_flag_registers_then_creates(repo, capsys):
