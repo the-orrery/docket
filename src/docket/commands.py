@@ -759,6 +759,8 @@ def cmd_new(  # noqa: C901, PLR0912, PLR0913, PLR0915  # mirrors the `new` CLI f
         break
     auto_commit(is_.path, f"pm(docket): {id_} new — {title}")
     print(f"created {is_.path}")
+    if body is None or body == "":
+        print("hint: body 是骨架填空; 写法详见 references/docket-writing.md")
 
 
 # ---- triage entry gate: inbox / accept / decline (ADR-008) ----
