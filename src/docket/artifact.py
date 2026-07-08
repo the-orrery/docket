@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import DocketError
-from .gitops import auto_commit, atomic_write_file
+from .gitops import atomic_write_file, auto_commit
 from .issue import find_repo_root, load_all, load_by_id, normalize_id
 
 SUPPORTED_TEMPLATES = ("handoff", "requirement")

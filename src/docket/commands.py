@@ -17,8 +17,8 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from .errors import DocketError, ExitSignal
 from .artifact import artifact_show_line
+from .errors import DocketError, ExitSignal
 from .gitops import auto_commit, git_log_records
 from .issue import (
     TRIAGE_TTL_DAYS,
