@@ -9,6 +9,7 @@
 |---|---|---|
 | 工具代码 | 本仓库 | CLI、TUI、校验、渲染、测试 |
 | PM 数据 | 独立本地数据仓 | issue、评论、项目文件和审计历史 |
+| issue artifact | PM 数据仓同级的 `<DOCKET_ROOT>-artifacts/<ID>/` | 长 handoff、RDP bundle、证据等大载荷；每个 issue 一个独立 Git repo |
 | 本机诊断 | 用户数据目录 | 命令耗时、退出码和少量本地错误样本 |
 
 ## 数据模型
@@ -37,6 +38,12 @@ labels: []
 评论单独放在 `comments/ISSUE-42.md`，项目说明放在 `projects/<key>.md`。
 每次写操作都会在 PM 数据仓里生成一个只包含目标文件的 Git commit。
 
+大载荷 artifact 不写进 PM 数据仓。`docket artifact init <id>` 会在 PM 数据仓
+同级目录 `<DOCKET_ROOT>-artifacts/<ID>/` 创建独立 Git repo；`path`、`show`、
+`list` 和 `sync` 用来查看路径、状态、列表，并把直接编辑的 artifact 文件提交到
+artifact 自己的历史。PM issue 仍是工作状态真相源，artifact repo 只承载长交接、
+需求 bundle 和验证证据。
+
 ## 两个入口
 
 `docket` 是 agent 和脚本入口，命令显式、输出稳定，适合自动化。
@@ -62,8 +69,8 @@ export DOCKET_ROOT=/path/to/pm-data
 ## 安全边界
 
 这个工具仓可以在审查后公开发布。PM 数据仓不应该跟着发布。真实任务、
-评论、运行输出、业务上下文和本机路径都应该留在 PM 数据仓或被 Git 忽略的
-本地文件里。
+评论、运行输出、业务上下文和本机路径都应该留在 PM 数据仓、外置 artifact repo
+或被 Git 忽略的本地文件里。
 
 发布到任何第三方远端前，先按 [发布安全](release-safety.md) 跑当前文件面
 和历史面的门禁。当前文件面通过不代表历史提交已经安全。

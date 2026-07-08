@@ -8,20 +8,24 @@ amend; files are written atomically (tmp + rename). A rare index/ref-lock
 collision fails cleanly and a short backoff retry almost always wins.
 """
 
-import contextlib
 import os
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 from .errors import DocketError
+from .fsops import atomic_write_file as _atomic_write_file
 from .issue import find_repo_root, load_by_id, normalize_id
 
 # Backoff for transient git lock contention (index.lock / ref lock) when
 # concurrent docket writers commit at once.
 _GIT_RETRY_DELAYS = [0.0, 0.15, 0.30, 0.60, 1.20]
+
+
+def atomic_write_file(path: str, data: str, perm: int = 0o644) -> None:
+    """Write a file atomically; kept here for existing gitops import callers."""
+    _atomic_write_file(path, data, perm)
 
 
 def _is_git_repo(root: str) -> bool:
@@ -165,22 +169,6 @@ def cmd_sync() -> None:
     if artifacts:
         ids = ", ".join(s.id for s in artifacts)
         print(f"sync: 同步 {len(artifacts)} 个 artifact repo → {ids}")
-
-
-def atomic_write_file(path: str, data: str, perm: int = 0o644) -> None:
-    """Write via a temp file in the same dir + rename, so a concurrent
-    reader/writer never observes a torn file."""
-    d = str(Path(path).parent)
-    fd, tmp = tempfile.mkstemp(prefix=".docket-", suffix=".tmp", dir=d)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape") as f:
-            f.write(data)
-        Path(tmp).chmod(perm)
-        Path(tmp).replace(path)
-    except BaseException:
-        with contextlib.suppress(OSError):
-            Path(tmp).unlink()
-        raise
 
 
 def cmd_history(id_: str) -> None:

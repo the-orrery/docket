@@ -82,10 +82,11 @@ def cmd_artifact_list(id_: str | None = None) -> None:
     if not root.is_dir():
         print("(no artifacts)")
         return
+    issue_ids = {is_.id() for is_ in load_all()}
     summaries = [
         artifact_summary(p.name)
         for p in sorted(root.iterdir())
-        if p.is_dir() and not p.name.startswith(".")
+        if p.is_dir() and not p.name.startswith(".") and p.name in issue_ids
     ]
     if not summaries:
         print("(no artifacts)")

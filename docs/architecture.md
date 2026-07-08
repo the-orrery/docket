@@ -15,9 +15,11 @@
 |---|---|
 | `src/docket/cli.py` | Typer 命令注册、`docket`/`pm` 入口、telemetry 包装 |
 | `src/docket/commands.py` | list、batch、new、set、comment、validate、health、groom 等命令实现 |
+| `src/docket/artifact.py` | issue-owned artifact repo 的 init/path/show/list/sync |
 | `src/docket/issue.py` | issue 解析、frontmatter 往返、id 归一化、root 查找 |
+| `src/docket/fsops.py` | 不依赖 PM 模型的文件系统原语，例如原子写文件 |
 | `src/docket/projects.py` | 项目加载、overview、项目钻取、tree 视图 |
-| `src/docket/gitops.py` | 原子写文件、窄 Git auto-commit、issue history、sync |
+| `src/docket/gitops.py` | 窄 Git auto-commit、issue history、sync |
 | `src/docket/states.py` | 状态和优先级归一化 |
 | `src/docket/render.py` | 表格布局、颜色、截断、状态样式 |
 | `src/docket/ui.py` | 给人浏览用的只读 Textual TUI |
@@ -34,6 +36,11 @@
 5. 写命令改一个文件，并调用 `gitops.auto_commit` 记录窄提交。
 6. 读命令和校验命令输出稳定文本，供人和 agent 消费。
 
+artifact 路径不同：`docket artifact init <id>` 从当前 PM root 派生同级目录
+`<DOCKET_ROOT>-artifacts/<ID>/`，并在该 issue 目录内初始化独立 Git repo。
+`docket sync` 会先收编 PM 数据仓里的直接写入，再同步 dirty artifact repo，但
+artifact payload 不进入 PM 数据仓提交。
+
 TUI 路径不同：`docket ui` 和裸 `pm` 会在 stdout/stderr 被包装之前直接启动
 Textual，因为全屏终端 UI 必须占用真实终端。
 
@@ -42,6 +49,8 @@ Textual，因为全屏终端 UI 必须占用真实终端。
 | 不变量 | 破坏后果 |
 |---|---|
 | PM 数据仓仍是唯一真相源 | 普通读面和其它数据源会互相污染 |
+| artifact payload 位于 PM 数据仓同级目录，不在 PM Git repo 内 | 大文件、交接包或证据会污染 PM 历史和发布安全边界 |
+| 每个 artifact 目录都是独立 Git repo | 长交接和证据缺少独立审计历史，`artifact sync` 无法窄提交 |
 | `Issue.render()` 尽量保持未改字段和正文的原样往返 | 手工编辑和 CLI 写入会产生无意义 diff |
 | 写操作只 stage 当前目标文件 | 并发写或脏 worktree 会被误收进同一 commit |
 | TUI 启动不能经过 stdout/stderr tee | 终端 UI 的控制序列会被采样包装破坏 |
@@ -52,6 +61,7 @@ Textual，因为全屏终端 UI 必须占用真实终端。
 | 我想改 / 加 | 从这里入手 | 备注 |
 |---|---|---|
 | 加一个 CLI 命令 | `src/docket/cli.py` + `src/docket/commands.py` | 命令注册和实现分开 |
+| 改 issue artifact 行为 | `src/docket/artifact.py` | 保持 `<DOCKET_ROOT>-artifacts/<ID>/` 外置路径和 per-issue Git repo |
 | 改 issue frontmatter 解析或 id 规则 | `src/docket/issue.py` | 注意 round-trip 和 mixed prefix 行为 |
 | 改写操作的 Git 行为 | `src/docket/gitops.py` | 不要把窄 pathspec 改成全仓 add |
 | 改 overview / project / tree | `src/docket/projects.py` | 需要同步项目加载和展示语义 |

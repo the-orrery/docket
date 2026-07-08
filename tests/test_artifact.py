@@ -86,6 +86,23 @@ def test_artifact_sync_commits_direct_checkout_edits(repo, capsys):
     assert _git(artifact, "status", "--porcelain").stdout == ""
 
 
+def test_artifact_list_skips_orphaned_artifact_dirs(repo, capsys):
+    _new_issue()
+    capsys.readouterr()
+    A.cmd_artifact_init("ISSUE-1", "handoff")
+    capsys.readouterr()
+
+    orphan = _artifact_dir(repo) / "ISSUE-999"
+    orphan.mkdir(parents=True)
+    (orphan / ".git").mkdir()
+
+    A.cmd_artifact_list()
+
+    out = capsys.readouterr().out
+    assert "ISSUE-1" in out
+    assert "ISSUE-999" not in out
+
+
 def test_docket_sync_reports_only_dirty_artifact_repos(repo, capsys):
     _new_issue()
     capsys.readouterr()

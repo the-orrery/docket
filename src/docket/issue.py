@@ -122,7 +122,7 @@ class Issue:
         return "".join(parts)
 
     def write(self) -> None:
-        from .gitops import atomic_write_file
+        from .fsops import atomic_write_file
 
         atomic_write_file(self.path, self.render(), 0o644)
 
