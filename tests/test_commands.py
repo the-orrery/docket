@@ -4,6 +4,9 @@ DOCKET_ROOT (no git → auto_commit is a no-op)."""
 
 from __future__ import annotations
 
+import json
+import os
+
 import pytest
 
 from docket import commands as C
@@ -14,6 +17,7 @@ from docket.commands import (
     default_comment_session,
     read_comments,
 )
+from docket.errors import DocketError
 from docket.issue import load_by_id, quote_scalar
 
 
@@ -24,6 +28,7 @@ def repo(tmp_path, monkeypatch):
     # hermetic: don't inherit DOCKET_ID_PREFIX from the dev's env, else writes
     # normalize to it while these tests assert the default ISSUE-<n>.
     monkeypatch.delenv("DOCKET_ID_PREFIX", raising=False)
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE", "0")
     return tmp_path
 
 
@@ -77,12 +82,99 @@ def test_set_status_pairs_completed_date(repo):
     assert not is_.get("completed")[1]
 
 
+def test_finish_blocks_when_worktree_gate_reports_active(repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE", "1")
+    _fake_registrar(
+        tmp_path,
+        monkeypatch,
+        {
+            "blocked": True,
+            "active_count": 1,
+            "items": [
+                {
+                    "name": "docket-issue-1-work",
+                    "close_gate_state": "ready-to-close",
+                    "close_gate_action": (
+                        "registrar worktree closeout docket-issue-1-work --apply"
+                    ),
+                }
+            ],
+        },
+        exit_code=1,
+    )
+    _make()
+
+    with pytest.raises(DocketError) as ei:
+        C.cmd_finish("ISSUE-1")
+
+    assert "worktree close gate blocked ISSUE-1" in ei.value.message
+    assert "docket-issue-1-work" in ei.value.message
+    is_ = load_by_id("ISSUE-1")
+    assert is_.state_type() == "unstarted"
+
+
+def test_set_done_blocks_on_worktree_gate(repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE", "1")
+    _fake_registrar(
+        tmp_path,
+        monkeypatch,
+        {
+            "blocked": True,
+            "active_count": 1,
+            "items": [
+                {
+                    "name": "docket-issue-1-work",
+                    "close_gate_state": "unmerged",
+                    "close_gate_action": "merge or delete",
+                }
+            ],
+        },
+        exit_code=1,
+    )
+    _make()
+
+    with pytest.raises(DocketError, match="worktree close gate blocked ISSUE-1"):
+        C.cmd_set("ISSUE-1", status="Done")
+
+    assert load_by_id("ISSUE-1").state_type() == "unstarted"
+
+
+def test_finish_allows_when_worktree_gate_is_clear(repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE", "1")
+    _fake_registrar(
+        tmp_path,
+        monkeypatch,
+        {"blocked": False, "active_count": 0, "items": []},
+        exit_code=0,
+    )
+    _make()
+
+    C.cmd_finish("ISSUE-1")
+
+    assert load_by_id("ISSUE-1").state_type() == "completed"
+
+
 def test_set_status_with_other_fields_one_call(repo):
     _make()
     C.cmd_set("ISSUE-1", status="backlog", priority="High")
     is_ = load_by_id("ISSUE-1")
     assert is_.state_type() == "backlog"
     assert is_.priority() == "High"
+
+
+def _fake_registrar(tmp_path, monkeypatch, payload, *, exit_code):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    script = bin_dir / "registrar"
+    script.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        f"print({json.dumps(json.dumps(payload))})\n"
+        f"sys.exit({exit_code})\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + os.environ.get("PATH", ""))
 
 
 # ---- get ----

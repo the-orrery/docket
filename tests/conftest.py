@@ -9,6 +9,10 @@ runner itself often executes under such markers, which would silently turn every
 Neutralize that ambient env for ALL tests so the gate's default is `human`
 (→ no triage) and the suite is deterministic regardless of who runs it. Tests
 that exercise the gate set the markers (or pass `actor=`) explicitly.
+
+The worktree close gate shells out to the developer's installed `registrar`.
+Disable it by default for hermetic tests; gate-specific tests opt back in with
+`DOCKET_WORKTREE_CLOSE_GATE=1` and a fake registrar on PATH.
 """
 
 from __future__ import annotations
@@ -33,3 +37,4 @@ _ACTOR_MARKERS = (
 def _neutralize_actor_env(monkeypatch):
     for name in _ACTOR_MARKERS:
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE", "0")
