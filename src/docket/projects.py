@@ -352,7 +352,9 @@ def _print_triage_pending_line(issues):
     print()
 
 
-def cmd_overview(show_projects: bool = True):  # one whole-state index render (port of overview.go)
+def cmd_overview(
+    show_projects: bool = True,
+):  # one whole-state index render (port of overview.go)
     """Print a human-facing one-screen index of the whole PM state: what's in
     progress, then every project's progress bar + a pointer (id→file) to its next
     issue. Issue bodies are intentionally omitted — this is a navigation index

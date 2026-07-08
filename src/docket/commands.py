@@ -1264,7 +1264,9 @@ def _comment_block(actor, text, session=None):
     return f"## {ts} · {actor}{suffix}\n\n{text}\n\n---\n\n"
 
 
-def cmd_comment(id_, actor, text, amend=False, delete_last=False, session=None):  # append/amend/delete-last share one entry (port of comment.go)
+def cmd_comment(
+    id_, actor, text, amend=False, delete_last=False, session=None
+):  # append/amend/delete-last share one entry (port of comment.go)
     """Append a comment block to <root>/comments/ISSUE-<n>.md (creating it with
     frontmatter if absent). --amend replaces the last block with new text;
     --delete-last drops the last block. Block: "## <time> · <actor>" + body."""
