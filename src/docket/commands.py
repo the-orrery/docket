@@ -173,7 +173,7 @@ def todo_batches(issues):
     )
 
 
-def cmd_batch(arg):  # noqa: C901  # one cohesive batch-view command (port of batch.go)
+def cmd_batch(arg):  # one cohesive batch-view command (port of batch.go)
     """Rolling-batch view: Todo split into 本批 (lowest open batch) / 下批 (next) /
     后续 (higher batches + unbatched). With a numeric arg, list just that batch."""
     issues = load_all()
@@ -373,7 +373,7 @@ def _print_blocks_line(is_, all_issues):
         print(f"{'blocks:':<11} {' / '.join(labels)}")
 
 
-def cmd_show(id_, no_comments):  # noqa: C901, PLR0912  # one issue-render command (port of show.go)
+def cmd_show(id_, no_comments):  # one issue-render command (port of show.go)
     show_comments = not no_comments
     is_ = load_by_id(id_)
     projects, _ = load_projects()
@@ -599,7 +599,7 @@ _BODY_PROJECT_PLAN = """\
 _NEW_TYPES = {"task": _BODY_TASK, "bug": _BODY_BUG}
 
 
-def cmd_new(  # noqa: C901, PLR0912, PLR0913, PLR0915  # mirrors the `new` CLI flag surface 1:1 (port of new.go)
+def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)
     title,
     project,
     priority,
@@ -632,9 +632,7 @@ def cmd_new(  # noqa: C901, PLR0912, PLR0913, PLR0915  # mirrors the `new` CLI f
     # an agent flood through silently.
     if triage is True:
         is_triage_new = True
-    elif triage is False:
-        is_triage_new = False
-    elif directed:
+    elif triage is False or directed:
         is_triage_new = False
     else:
         gate_actor = (actor or "").strip() or default_comment_actor()
@@ -759,6 +757,8 @@ def cmd_new(  # noqa: C901, PLR0912, PLR0913, PLR0915  # mirrors the `new` CLI f
         break
     auto_commit(is_.path, f"pm(docket): {id_} new — {title}")
     print(f"created {is_.path}")
+    if body is None or body == "":
+        print("hint: body 是骨架填空; 写法详见 references/docket-writing.md")
 
 
 # ---- triage entry gate: inbox / accept / decline (ADR-008) ----
@@ -995,7 +995,7 @@ def cmd_status(id_, state):
 # ---- set ----
 
 
-def cmd_set(  # noqa: C901, PLR0912, PLR0913, PLR0915  # mirrors the `set` CLI flag surface 1:1 (port of set.go)
+def cmd_set(  # mirrors the `set` CLI flag surface 1:1 (port of set.go)
     id_,
     priority=None,
     project=None,
@@ -1049,9 +1049,8 @@ def cmd_set(  # noqa: C901, PLR0912, PLR0913, PLR0915  # mirrors the `set` CLI f
         is_.set_after("milestone", quote_scalar(milestone), anchor)
         changed.append("milestone")
 
-    if unwake:
-        if is_.remove("wake"):
-            changed.append("wake")
+    if unwake and is_.remove("wake"):
+        changed.append("wake")
 
     if wake is not None:
         _, ok = parse_date(str(wake))
@@ -1114,7 +1113,7 @@ class _SearchHit:
         self.snippets = []
 
 
-def cmd_search(kw):  # noqa: C901, PLR0912  # one grep-across-issues+comments command (port of search.go)
+def cmd_search(kw):  # one grep-across-issues+comments command (port of search.go)
     """grep issues/*.md (title + body) and comments/*.md (comment bodies) for kw,
     case-insensitively. Structured frontmatter is NOT searched. One line per
     matched issue, sorted by id, deduped, with indented source-tagged snippets."""
@@ -1265,7 +1264,9 @@ def _comment_block(actor, text, session=None):
     return f"## {ts} · {actor}{suffix}\n\n{text}\n\n---\n\n"
 
 
-def cmd_comment(id_, actor, text, amend=False, delete_last=False, session=None):  # noqa: PLR0913  # append/amend/delete-last share one entry (port of comment.go)
+def cmd_comment(
+    id_, actor, text, amend=False, delete_last=False, session=None
+):  # append/amend/delete-last share one entry (port of comment.go)
     """Append a comment block to <root>/comments/ISSUE-<n>.md (creating it with
     frontmatter if absent). --amend replaces the last block with new text;
     --delete-last drops the last block. Block: "## <time> · <actor>" + body."""
@@ -1343,7 +1344,7 @@ def parse_date(s):
 
 
 # One pass over all data-integrity checks (port of validate.go).
-def collect_validation_problems(issues, strict=False):  # noqa: C901, PLR0912, PLR0915
+def collect_validation_problems(issues, strict=False):
     """Run every data-integrity check over `issues` and return the sorted list of
     problem strings (empty when clean). Pure: no printing, no exit — `cmd_validate`
     handles output/ExitSignal, and `cmd_groom` reuses this for its validate summary.

@@ -9,9 +9,9 @@ autouse fixture in conftest.py clears agent env markers, so the gate default is
 
 from __future__ import annotations
 
-import pytest
-
 from pathlib import Path
+
+import pytest
 
 from docket import commands as C
 from docket import projects as P
@@ -41,8 +41,8 @@ def _new(title="x", **kw):
         status=kw.get("status"),
         blocked_by=kw.get("blocked_by"),
         directed=kw.get("directed", False),
-        triage=kw.get("triage", None),
-        actor=kw.get("actor", None),
+        triage=kw.get("triage"),
+        actor=kw.get("actor"),
     )
 
 

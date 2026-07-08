@@ -102,10 +102,7 @@ def db_path() -> Path:
     if override:
         return Path(override)
     base = os.environ.get("XDG_DATA_HOME")
-    if base:
-        root = Path(base)
-    else:
-        root = Path.home() / ".local" / "share"
+    root = Path(base) if base else Path.home() / ".local" / "share"
     return root / "docket" / "telemetry.db"
 
 

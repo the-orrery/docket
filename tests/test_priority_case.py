@@ -14,7 +14,6 @@ from docket.errors import DocketError
 from docket.issue import load_by_id
 from docket.states import resolve_priority
 
-
 # ---- unit: resolve_priority ----
 
 

@@ -57,7 +57,7 @@ class Project:
         path="",
         lane="",
         rank="",
-    ):  # noqa: PLR0913  # plain data container: one arg per projects/<key>.md field
+    ):  # plain data container: one arg per projects/<key>.md field
         self.key = key
         self.title = title
         self.prefix = prefix
@@ -183,7 +183,7 @@ def progress_counts(issues) -> tuple[int, int]:
     return done, total
 
 
-def cmd_projects(all_):  # noqa: C901  # one project-overview render (port of projects.go)
+def cmd_projects(all_):  # one project-overview render (port of projects.go)
     """Print the project-layer overview: one row per project with its prefix,
     title, status, and progress (active count + done/scope). Default hides
     archived projects (status done/archived/canceled); --all shows them. Issues
@@ -352,7 +352,9 @@ def _print_triage_pending_line(issues):
     print()
 
 
-def cmd_overview(show_projects: bool = True):  # noqa: C901, PLR0912, PLR0915  # one whole-state index render (port of overview.go)
+def cmd_overview(
+    show_projects: bool = True,
+):  # one whole-state index render (port of overview.go)
     """Print a human-facing one-screen index of the whole PM state: what's in
     progress, then every project's progress bar + a pointer (id→file) to its next
     issue. Issue bodies are intentionally omitted — this is a navigation index
