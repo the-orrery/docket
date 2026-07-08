@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from difflib import get_close_matches
 from pathlib import Path
+from typing import NoReturn
 
 from .errors import DocketError
 
@@ -38,7 +39,7 @@ def quote_scalar(s: str) -> str:
 def parse_flow_list(s: str) -> list[str]:
     """Parse docket's simple flow-list fields (``[A, B]``) into strings."""
     raw = s.strip()
-    if raw == "" or raw == "[]":
+    if raw in {"", "[]"}:
         return []
     if raw.startswith("[") and raw.endswith("]"):
         raw = raw[1:-1]
@@ -526,6 +527,50 @@ def _closest_ids(id_: str, existing: list[str]) -> list[str]:
     return get_close_matches(id_, existing, n=3, cutoff=0.6)
 
 
+def _exact_ref_matches(raw: str, issues, projects) -> dict[str, Issue]:
+    matches: dict[str, Issue] = {}
+    raw_key = raw.lower()
+    for is_ in issues:
+        for candidate in issue_refs(is_, projects):
+            if candidate.lower() == raw_key:
+                matches[is_.id()] = is_
+    return matches
+
+
+def _bare_number_matches(raw: str, issues) -> tuple[dict[str, Issue], str]:
+    if not _BARE_NUMBER_RE.fullmatch(raw):
+        return {}, raw
+    n = int(raw, 10)
+    legacy = f"{id_prefix()}-{n}"
+    matches = {
+        is_.id(): is_ for is_ in issues if is_.id() == legacy or is_.project_iid() == n
+    }
+    return matches, legacy
+
+
+def _legacy_prefix_matches(raw: str, issues, projects) -> tuple[dict[str, Issue], str]:
+    m = _ANY_PREFIX_ID_RE.match(raw)
+    if m is None:
+        return {}, raw
+    prefix = raw[: raw.index("-")]
+    registered = {p.lower() for p in _known_display_prefixes(projects)}
+    if prefix.lower() in registered:
+        return {}, raw
+    legacy = f"{id_prefix()}-{m.group(1)}"
+    matches = {is_.id(): is_ for is_ in issues if is_.id() == legacy}
+    return matches, legacy
+
+
+def _raise_ref_not_found(raw: str, not_found_ref: str, issues, projects) -> NoReturn:
+    existing_refs = []
+    for is_ in issues:
+        existing_refs.extend(issue_refs(is_, projects))
+    normalized = normalize_id(raw)
+    sugg = _closest_ids(normalized, existing_refs)
+    hint = f". Did you mean: {', '.join(sugg)}?" if sugg else ""
+    raise DocketError(f"issue {not_found_ref} not found{hint}")
+
+
 def resolve_issue_ref(ref: str, issues=None, projects=None) -> Issue:
     """Resolve uid/display ref/alias/legacy id to one Issue.
 
@@ -544,33 +589,13 @@ def resolve_issue_ref(ref: str, issues=None, projects=None) -> Issue:
 
         projects, _ = load_projects()
 
-    matches: dict[str, Issue] = {}
-    raw_key = raw.lower()
+    matches = _exact_ref_matches(raw, issues, projects)
     not_found_ref = raw
-    for is_ in issues:
-        for candidate in issue_refs(is_, projects):
-            if candidate.lower() == raw_key:
-                matches[is_.id()] = is_
-
-    if not matches and _BARE_NUMBER_RE.fullmatch(raw):
-        n = int(raw, 10)
-        legacy = f"{id_prefix()}-{n}"
-        not_found_ref = legacy
-        for is_ in issues:
-            if is_.id() == legacy or is_.project_iid() == n:
-                matches[is_.id()] = is_
 
     if not matches:
-        m = _ANY_PREFIX_ID_RE.match(raw)
-        if m is not None:
-            prefix = raw[: raw.index("-")]
-            registered = {p.lower() for p in _known_display_prefixes(projects)}
-            if prefix.lower() not in registered:
-                legacy = f"{id_prefix()}-{m.group(1)}"
-                not_found_ref = legacy
-                for is_ in issues:
-                    if is_.id() == legacy:
-                        matches[is_.id()] = is_
+        matches, not_found_ref = _bare_number_matches(raw, issues)
+    if not matches:
+        matches, not_found_ref = _legacy_prefix_matches(raw, issues, projects)
 
     if len(matches) == 1:
         return next(iter(matches.values()))
@@ -579,13 +604,7 @@ def resolve_issue_ref(ref: str, issues=None, projects=None) -> Issue:
             f"{raw}: ambiguous issue ref; candidates: {_format_candidates(matches.values(), projects)}"
         )
 
-    existing_refs = []
-    for is_ in issues:
-        existing_refs.extend(issue_refs(is_, projects))
-    normalized = normalize_id(raw)
-    sugg = _closest_ids(normalized, existing_refs)
-    hint = f". Did you mean: {', '.join(sugg)}?" if sugg else ""
-    raise DocketError(f"issue {not_found_ref} not found{hint}")
+    _raise_ref_not_found(raw, not_found_ref, issues, projects)
 
 
 def load_by_id(id_: str) -> Issue:

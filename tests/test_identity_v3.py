@@ -109,7 +109,6 @@ def test_resolve_falls_back_to_configured_tiers(repo, tmp_path, monkeypatch, cap
         monkeypatch,
         project="rdp",
         prefix="RDP",
-        title="pipeline",
         aliases=["OPS-657"],
     )
     monkeypatch.setenv("DOCKET_ROOT", str(repo))
@@ -150,11 +149,11 @@ def _write_tiers(tmp_path, monkeypatch, **tiers):
     monkeypatch.setenv("HOME", str(home))
 
 
-def _add_issue(root, monkeypatch, *, project, prefix, title="issue", aliases=None):
+def _add_issue(root, monkeypatch, *, project, prefix, aliases=None):
     (root / "issues").mkdir(parents=True)
     monkeypatch.setenv("DOCKET_ROOT", str(root))
     C.cmd_project_new(project, title=project.title(), prefix=prefix)
-    C.cmd_new(title, project, "No priority", None, "", "", "")
+    C.cmd_new("issue", project, "No priority", None, "", "", "")
     issue = load_by_id(f"{prefix}-1")
     if aliases:
         issue.set_aliases([*issue.aliases(), *aliases])

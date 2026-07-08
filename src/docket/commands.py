@@ -29,8 +29,8 @@ from .issue import (
     find_repo_root,
     id_num,
     id_prefix,
-    issues_dir,
     issue_refs,
+    issues_dir,
     load_all,
     load_by_id,
     max_id,
@@ -1486,13 +1486,21 @@ def cmd_resolve(ref: str, as_json: bool = False) -> None:
 
 def _resolve_with_configured_tiers(ref: str) -> _ResolvedIssue:
     tiers = load_tiers()
-    current_root = ""
-    current_error: DocketError | None = None
+    current, current_root, current_error = _resolve_current_root(ref, tiers)
+    if current is not None:
+        return current
+    matches, tier_errors = _resolve_configured_tiers(ref, tiers, current_root)
+    return _select_tier_resolution(ref, matches, tier_errors, current_error)
+
+
+def _resolve_current_root(
+    ref: str, tiers: dict[str, str]
+) -> tuple[_ResolvedIssue | None, str, DocketError | None]:
     try:
         issues = load_all()
         projects, _ = load_projects()
         current_root = find_repo_root()
-        return _ResolvedIssue(
+        resolved = _ResolvedIssue(
             issue=resolve_issue_ref(ref, issues, projects),
             projects=projects,
             root=current_root,
@@ -1501,10 +1509,17 @@ def _resolve_with_configured_tiers(ref: str) -> _ResolvedIssue:
     except DocketError as exc:
         if "ambiguous issue ref" in exc.message:
             raise
-        current_error = exc
+        current_root = ""
         with contextlib.suppress(DocketError):
             current_root = find_repo_root()
+        return None, current_root, exc
+    else:
+        return resolved, current_root, None
 
+
+def _resolve_configured_tiers(
+    ref: str, tiers: dict[str, str], current_root: str
+) -> tuple[list[_ResolvedIssue], list[str]]:
     matches: list[_ResolvedIssue] = []
     tier_errors: list[str] = []
     seen_roots: set[Path] = set()
@@ -1523,7 +1538,15 @@ def _resolve_with_configured_tiers(ref: str) -> _ResolvedIssue:
         except DocketError as exc:
             if "ambiguous issue ref" in exc.message:
                 tier_errors.append(f"{tier}: {exc.message}")
+    return matches, tier_errors
 
+
+def _select_tier_resolution(
+    ref: str,
+    matches: list[_ResolvedIssue],
+    tier_errors: list[str],
+    current_error: DocketError | None,
+) -> _ResolvedIssue:
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
