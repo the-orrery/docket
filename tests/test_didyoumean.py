@@ -106,7 +106,7 @@ def test_wrong_prefix_normalizes_then_suggests(repo):
     _make()  # ISSUE-1
     with pytest.raises(DocketError) as ei:
         load_by_id("DEMO-9")
-    assert "issue ISSUE-9 not found. Did you mean: ISSUE-1?" == ei.value.message
+    assert ei.value.message == "issue ISSUE-9 not found. Did you mean: ISSUE-1?"
 
 
 def test_load_missing_id_no_suggestion_in_empty_repo(repo):

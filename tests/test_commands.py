@@ -163,7 +163,7 @@ def test_validate_flags_bad_wake(repo):
     is_.write()
     with pytest.raises(
         Exception
-    ):  # ExitSignal(1) — validate found a problem  # noqa: B017, PT011
+    ):  # ExitSignal(1) — validate found a problem
         C.cmd_validate()
 
 

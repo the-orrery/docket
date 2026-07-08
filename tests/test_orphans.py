@@ -16,7 +16,6 @@ import pytest
 from docket import commands as C
 from docket.issue import load_by_id
 
-
 # ---- fixtures ----
 
 

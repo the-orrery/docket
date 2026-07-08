@@ -457,7 +457,7 @@ class PMUI(App):
         label = f"{self._row_prefix(depth)}↥ {did}  {clip_runes(is_.title(), 58)}"
         lv.append(ContextItem(label))
 
-    def _add_issue_tree(self, lv, issues):  # noqa: C901  # one tree-build pass; splitting fragments the walk
+    def _add_issue_tree(self, lv, issues):  # one tree-build pass; splitting fragments the walk
         """Render the current filtered group as a parent/child tree.
 
         Ancestors outside the filter are shown as disabled context rows, so the
@@ -663,7 +663,7 @@ class PMUI(App):
         did = display_id(is_, self.by_key)
         return f"{prefix}{did} · {clip_runes(is_.title(), 62)}"
 
-    async def _render_relations(self, is_, prefix):  # noqa: C901, PLR0912  # one relations-panel render (blockers/blocks/parent/children)
+    async def _render_relations(self, is_, prefix):  # one relations-panel render (blockers/blocks/parent/children)
         lv = self.query_one(f"#{prefix}-relations", ListView)
         await lv.clear()
         pid = self._parent_id(is_)
@@ -1141,12 +1141,12 @@ def run(_args=None, *, roots=None):
     return 0
 
 
-def _selftest():  # noqa: PLR0915  # a linear sequence of pilot-driven UI assertions
+def _selftest():  # a linear sequence of pilot-driven UI assertions
     """Pilot-driven assertions against the live repo (read-only) + a screenshot.
     Exits non-zero (via AssertionError) on any behavioural regression."""
     import asyncio
 
-    async def go():  # noqa: PLR0915  # a linear sequence of pilot-driven UI assertions
+    async def go():  # a linear sequence of pilot-driven UI assertions
         app = PMUI()
         async with app.run_test(size=(124, 40)) as pilot:
             await pilot.pause()
