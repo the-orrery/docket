@@ -373,9 +373,9 @@ def _print_blocks_line(is_, all_issues):
         print(f"{'blocks:':<11} {' / '.join(labels)}")
 
 
-def cmd_show(
+def cmd_show(  # noqa: C901, PLR0912
     id_, no_comments
-):  # one issue-render command (port of show.go)  # noqa: C901, PLR0912
+):  # one issue-render command (port of show.go)
     show_comments = not no_comments
     is_ = load_by_id(id_)
     projects, _ = load_projects()
@@ -1115,9 +1115,9 @@ class _SearchHit:
         self.snippets = []
 
 
-def cmd_search(
+def cmd_search(  # noqa: C901, PLR0912
     kw,
-):  # one grep-across-issues+comments command (port of search.go)  # noqa: C901, PLR0912
+):  # one grep-across-issues+comments command (port of search.go)
     """grep issues/*.md (title + body) and comments/*.md (comment bodies) for kw,
     case-insensitively. Structured frontmatter is NOT searched. One line per
     matched issue, sorted by id, deduped, with indented source-tagged snippets."""

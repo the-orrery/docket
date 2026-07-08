@@ -183,9 +183,9 @@ def progress_counts(issues) -> tuple[int, int]:
     return done, total
 
 
-def cmd_projects(
+def cmd_projects(  # noqa: C901, PLR0912, PLR0915
     all_,
-):  # one project-overview render (port of projects.go)  # noqa: C901, PLR0912, PLR0915
+):  # one project-overview render (port of projects.go)
     """Print the project-layer overview: one row per project with its prefix,
     title, status, and progress (active count + done/scope). Default hides
     archived projects (status done/archived/canceled); --all shows them. Issues

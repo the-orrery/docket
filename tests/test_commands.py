@@ -161,9 +161,9 @@ def test_validate_flags_bad_wake(repo):
     is_ = load_by_id("ISSUE-1")
     is_.set_after("wake", "garbage", "project")
     is_.write()
-    with pytest.raises(
+    with pytest.raises(  # noqa: B017
         Exception
-    ):  # ExitSignal(1) — validate found a problem  # noqa: B017
+    ):  # ExitSignal(1) — validate found a problem
         C.cmd_validate()
 
 
