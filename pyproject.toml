@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "typer>=0.12",
+    "typer>=0.26.8",
     # textual: 人壳 TUI (pm / docket ui) 的核心依赖。一份安装同时服务 agent(docket)
     # 和人(pm)两条 lane,且 ui 模块在命令体内懒加载 → 核心依赖最省心,不做 optional extra。
     "textual>=0.86",
