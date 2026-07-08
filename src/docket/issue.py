@@ -471,6 +471,41 @@ def load_all():
     return issues
 
 
+class _IssueRefProject:
+    __slots__ = ("prefix",)
+
+    def __init__(self, prefix: str = ""):
+        self.prefix = prefix
+
+
+def _project_field(is_: Issue, key: str) -> str:
+    value, _ = is_.get(key)
+    return value
+
+
+def _load_issue_ref_projects() -> dict[str, _IssueRefProject]:
+    """Load only project keys and prefixes without importing projects.py.
+
+    projects.py renders the project views and imports issue.py, so the issue
+    resolver keeps a tiny local loader for its default path. Higher-level callers
+    can still pass the full projects map from projects.load_projects().
+    """
+    try:
+        root = find_repo_root()
+    except DocketError:
+        return {}
+    projects: dict[str, _IssueRefProject] = {}
+    for path in sorted((Path(root) / "projects").glob("*.md")):
+        try:
+            project_issue = parse_issue(str(path))
+        except Exception:
+            continue
+        key = unquote_scalar(_project_field(project_issue, "key")).strip()
+        prefix = unquote_scalar(_project_field(project_issue, "prefix")).strip()
+        projects[key or path.stem] = _IssueRefProject(prefix)
+    return projects
+
+
 def _issue_display_ref(is_: Issue, projects) -> str:
     """Compute the current human ref.
 
@@ -491,9 +526,7 @@ def _issue_display_ref(is_: Issue, projects) -> str:
 def issue_refs(is_: Issue, projects=None) -> list[str]:
     """All stable refs that should resolve to this issue."""
     if projects is None:
-        from .projects import load_projects
-
-        projects, _ = load_projects()
+        projects = _load_issue_ref_projects()
     refs = [is_.uid(), is_.id(), _issue_display_ref(is_, projects), *is_.aliases()]
     return unique_refs(refs)
 
@@ -585,9 +618,7 @@ def resolve_issue_ref(ref: str, issues=None, projects=None) -> Issue:
     if issues is None:
         issues = load_all()
     if projects is None:
-        from .projects import load_projects
-
-        projects, _ = load_projects()
+        projects = _load_issue_ref_projects()
 
     matches = _exact_ref_matches(raw, issues, projects)
     not_found_ref = raw
