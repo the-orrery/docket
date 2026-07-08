@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from .errors import DocketError, ExitSignal
+from .artifact import artifact_show_line
 from .gitops import auto_commit, git_log_records
 from .issue import (
     TRIAGE_TTL_DAYS,
@@ -427,6 +428,9 @@ def cmd_show(  # noqa: C901, PLR0912
                 print(f"{k + ':':<11} {key}")
         else:
             print(f"{k + ':':<11} {unquote_scalar(v)}")
+    artifact = artifact_show_line(is_.id())
+    if artifact is not None:
+        print(f"{'artifact:':<11} {artifact}")
     print("---")
     print(is_.body, end="")
     if not is_.body.endswith("\n"):

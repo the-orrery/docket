@@ -147,14 +147,24 @@ def catch_up_stray_writes() -> list:
 
 
 def cmd_sync() -> None:
-    """Sweep issues/comments/projects md edited outside docket into history (one commit
-    each). The explicit catch-up point now that writes no longer scan the tree
-    Run it from the SessionStart hook or on demand."""
+    """Sweep PM files and artifact repositories edited outside docket into history.
+
+    PM data files are committed one file at a time in the PM repo. Artifact
+    payloads live in independent nested Git repositories, so their dirty working
+    trees are committed inside those repositories instead of entering PM history.
+    """
+    from .artifact import sync_all_artifacts
+
     swept = catch_up_stray_writes()
-    if not swept:
+    artifacts = sync_all_artifacts()
+    if not swept and not artifacts:
         print("sync: 无外部直写待收编")
         return
-    print(f"sync: 收编 {len(swept)} 个外部直写 → {', '.join(swept)}")
+    if swept:
+        print(f"sync: 收编 {len(swept)} 个外部直写 → {', '.join(swept)}")
+    if artifacts:
+        ids = ", ".join(s.id for s in artifacts)
+        print(f"sync: 同步 {len(artifacts)} 个 artifact repo → {ids}")
 
 
 def atomic_write_file(path: str, data: str, perm: int = 0o644) -> None:

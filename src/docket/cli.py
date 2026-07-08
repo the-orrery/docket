@@ -22,6 +22,7 @@ from typer import _click as _typer_click  # typer 0.26 vendors click here
 from typer.core import TyperGroup
 
 from . import __version__, render, telemetry
+from . import artifact as A
 from . import commands as C
 from . import projects as P
 from .errors import DocketError, ExitSignal
@@ -274,8 +275,54 @@ def _stats():
 
 @app.command("sync")
 def _sync():
-    """sweep issues/comments/projects edited outside docket into history (one commit each)"""
+    """sweep PM files and artifact repos edited outside docket into history"""
     cmd_sync()
+
+
+artifact_app = typer.Typer(cls=_SuggestGroup)
+app.add_typer(artifact_app, name="artifact")
+
+
+@artifact_app.command("init")
+def _artifact_init(
+    id: str,
+    template: str = typer.Option(
+        "handoff",
+        "--template",
+        help="artifact template: handoff or requirement",
+    ),
+):
+    """create an issue-owned artifact Git repo under $DOCKET_ROOT/artifacts/<id>"""
+    A.cmd_artifact_init(id, template)
+
+
+@artifact_app.command("path")
+def _artifact_path(id: str):
+    """print the canonical artifact repo path for an issue"""
+    A.cmd_artifact_path(id)
+
+
+@artifact_app.command("list")
+def _artifact_list(id: str = typer.Argument(None)):
+    """list artifact repos, or summarize one issue's artifact"""
+    A.cmd_artifact_list(id)
+
+
+@artifact_app.command("show")
+def _artifact_show(id: str):
+    """show one artifact repo location and Git status"""
+    A.cmd_artifact_show(id)
+
+
+@artifact_app.command("sync")
+def _artifact_sync(
+    id: str = typer.Argument(None),
+    all: bool = typer.Option(
+        False, "--all", help="sync every initialized artifact repo"
+    ),
+):
+    """commit dirty files in one artifact repo, or every repo with --all"""
+    A.cmd_artifact_sync(id, all_=all)
 
 
 # ---- write verbs ----
