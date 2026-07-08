@@ -78,6 +78,8 @@ docket overview
 | `docket accept <id> [--backlog]` | 受理待审项 → Todo(`--backlog` 落 Backlog)。 |
 | `docket decline <id> [理由]` | 拒绝待审项 → Canceled,并自动留一条 `declined from triage: <理由>` 评论。 |
 | `docket comment <id> "内容"` | 追加评论。 |
+| `docket artifact init <id> --template handoff\|requirement` | 在当前 PM 仓的 sibling 目录 `<DOCKET_ROOT>-artifacts/<ID>/` 创建该 issue 的独立 artifact Git repo；payload 不进入 PM 仓目录。 |
+| `docket artifact path/show/list/sync` | 查看 artifact repo 路径/状态/列表，并把直接编辑的 artifact repo 脏改提交到它自己的 Git 历史。 |
 | `docket validate` | 校验所有 issue。 |
 | `docket health [--project Y] [--json]` | agent-facing 工作健康信号。`--json` 输出稳定 envelope,包含长期工作结构缺口信号(缺当前状态卡、阶段出口、下一步最小动作、实现闸门、split 出口变化),供 agent 生成进度/漂移/总控报告。只读、advisory,不进入 validate。 |
 | `docket groom [--project Y] [--today YYYY-MM-DD] [--json]` | 周期性梳理:列出所有非-done issue 的停滞表(状态/停滞天数/项目/父子/讨论数,按停滞排序)+ validate 摘要;`--json` 仍只出停滞记录。表格模式页脚复用 `docket health` 的长期工作信号,并汇总写作健康信号(未填骨架 section 数 + comment 长度分布/超长计数),用于调试/卫生盘点,不是 principal 报告主入口。 |
