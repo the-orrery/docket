@@ -469,10 +469,13 @@ def _parse_comment_blocks(id_, root=None):
     return blocks
 
 
+_KB = 1024
+
+
 def _fmt_size(n):
-    if n < 1024:
+    if n < _KB:
         return f"{n}B"
-    return f"{n / 1024:.1f}KB"
+    return f"{n / _KB:.1f}KB"
 
 
 def print_comments_directory(id_):
@@ -499,7 +502,7 @@ def print_comment_single(id_, idx):
         return
     if idx < 1 or idx > len(blocks):
         raise DocketError(f"comment #{idx} out of range (1-{len(blocks)})")
-    header, body, size = blocks[idx - 1]
+    header, body, _size = blocks[idx - 1]
     print(f"\n## {header}\n")
     print(body, end="")
     if not body.endswith("\n"):
