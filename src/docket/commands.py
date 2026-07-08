@@ -57,6 +57,7 @@ from .states import (
     valid_priority,
     valid_state_type,
 )
+from .worktree_gate import ensure_worktrees_reconciled
 
 # ---- dependency edges (blocked_by) ----
 
@@ -1037,6 +1038,7 @@ def apply_state(is_, status, state_type):
 def set_state_cmd(id_, name, status, state_type):
     """Apply a fixed (status, state_type) to an issue + updated/completed."""
     is_ = load_by_id(id_)
+    ensure_worktrees_reconciled(is_, state_type)
     apply_state(is_, status, state_type)
     is_.write()
     auto_commit(is_.path, f"pm(docket): {is_.id()} {name} → {status}")
@@ -1075,6 +1077,7 @@ def cmd_finish(id_):
 def cmd_status(id_, state):
     is_ = load_by_id(id_)
     status, state_type = resolve_state(state)
+    ensure_worktrees_reconciled(is_, state_type)
     apply_state(is_, status, state_type)
     is_.write()
     auto_commit(is_.path, f"pm(docket): {is_.id()} status → {status} ({state_type})")
@@ -1109,6 +1112,7 @@ def cmd_set(  # mirrors the `set` CLI flag surface 1:1 (port of set.go)  # noqa:
 
     if status is not None:
         st_status, st_state_type = resolve_state(status)
+        ensure_worktrees_reconciled(is_, st_state_type)
         apply_state(is_, st_status, st_state_type)  # sets updated + completed too
         changed.append("status")
 
