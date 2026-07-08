@@ -78,7 +78,7 @@ docket overview
 | `docket accept <id> [--backlog]` | 受理待审项 → Todo(`--backlog` 落 Backlog)。 |
 | `docket decline <id> [理由]` | 拒绝待审项 → Canceled,并自动留一条 `declined from triage: <理由>` 评论。 |
 | `docket comment <id> "内容"` | 追加评论。 |
-| `docket artifact init <id> --template handoff\|requirement` | 在当前 `$DOCKET_ROOT/artifacts/<ID>/` 创建该 issue 的独立 artifact Git repo；payload 不进 PM 仓历史。 |
+| `docket artifact init <id> --template handoff\|requirement` | 在当前 PM 仓的 sibling 目录 `<DOCKET_ROOT>-artifacts/<ID>/` 创建该 issue 的独立 artifact Git repo；payload 不进入 PM 仓目录。 |
 | `docket artifact path/show/list/sync` | 查看 artifact repo 路径/状态/列表，并把直接编辑的 artifact repo 脏改提交到它自己的 Git 历史。 |
 | `docket validate` | 校验所有 issue。 |
 | `docket health [--project Y] [--json]` | agent-facing 工作健康信号。`--json` 输出稳定 envelope,包含长期工作结构缺口信号(缺当前状态卡、阶段出口、下一步最小动作、实现闸门、split 出口变化),供 agent 生成进度/漂移/总控报告。只读、advisory,不进入 validate。 |

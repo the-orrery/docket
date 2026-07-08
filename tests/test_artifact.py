@@ -33,6 +33,10 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _artifact_dir(repo: Path) -> Path:
+    return repo.with_name(f"{repo.name}-artifacts")
+
+
 def test_artifact_path_follows_current_docket_root(tmp_path, monkeypatch):
     monkeypatch.delenv("DOCKET_ID_PREFIX", raising=False)
     root_a = tmp_path / "a"
@@ -43,34 +47,33 @@ def test_artifact_path_follows_current_docket_root(tmp_path, monkeypatch):
         _new_issue()
 
     monkeypatch.setenv("DOCKET_ROOT", str(root_a))
-    assert A.artifact_path("ISSUE-1") == root_a / "artifacts" / "ISSUE-1"
+    assert A.artifact_path("ISSUE-1") == tmp_path / "a-artifacts" / "ISSUE-1"
 
     monkeypatch.setenv("DOCKET_ROOT", str(root_b))
-    assert A.artifact_path("ISSUE-1") == root_b / "artifacts" / "ISSUE-1"
+    assert A.artifact_path("ISSUE-1") == tmp_path / "b-artifacts" / "ISSUE-1"
 
 
-def test_artifact_init_creates_handoff_repo_and_ignores_payload(repo, capsys):
+def test_artifact_init_creates_handoff_repo_outside_pm_repo(repo, capsys):
     _git(repo, "init")
     _new_issue()
     capsys.readouterr()
 
     A.cmd_artifact_init("ISSUE-1", "handoff")
     out = capsys.readouterr().out
-    artifact = repo / "artifacts" / "ISSUE-1"
+    artifact = _artifact_dir(repo) / "ISSUE-1"
 
     assert "initialized" in out
     assert (artifact / ".git").is_dir()
     assert (artifact / "brief.md").is_file()
-    assert "artifacts/*" in (repo / ".gitignore").read_text(encoding="utf-8")
-    status = _git(repo, "status", "--porcelain", "--", "artifacts/ISSUE-1").stdout
-    assert status == ""
+    assert not (repo / "artifacts").exists()
+    assert _git(repo, "status", "--porcelain").stdout == ""
 
 
 def test_artifact_sync_commits_direct_checkout_edits(repo, capsys):
     _new_issue()
     capsys.readouterr()
     A.cmd_artifact_init("ISSUE-1", "handoff")
-    artifact = repo / "artifacts" / "ISSUE-1"
+    artifact = _artifact_dir(repo) / "ISSUE-1"
     before = _git(artifact, "rev-list", "--count", "HEAD").stdout.strip()
 
     (artifact / "progress.md").write_text("# changed\n", encoding="utf-8")
@@ -85,7 +88,7 @@ def test_docket_sync_reports_only_dirty_artifact_repos(repo, capsys):
     _new_issue()
     capsys.readouterr()
     A.cmd_artifact_init("ISSUE-1", "handoff")
-    artifact = repo / "artifacts" / "ISSUE-1"
+    artifact = _artifact_dir(repo) / "ISSUE-1"
     capsys.readouterr()
 
     cmd_sync()
@@ -109,7 +112,7 @@ def test_show_prints_artifact_summary(repo, capsys):
     out = capsys.readouterr().out
 
     assert "artifact:" in out
-    assert str(repo / "artifacts" / "ISSUE-1") in out
+    assert str(_artifact_dir(repo) / "ISSUE-1") in out
 
 
 def test_requirement_template_delegates_to_rd_pipeline(
@@ -141,7 +144,7 @@ touch "$target/acceptance.md"
     capsys.readouterr()
 
     A.cmd_artifact_init("ISSUE-1", "requirement")
-    artifact = repo / "artifacts" / "ISSUE-1"
+    artifact = _artifact_dir(repo) / "ISSUE-1"
 
     assert (artifact / ".git").is_dir()
     assert (

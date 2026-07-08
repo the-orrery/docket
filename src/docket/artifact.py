@@ -1,9 +1,10 @@
 """Issue-owned artifact repositories.
 
-Artifacts hold large handoff, requirement-bundle, or evidence payloads next to
-their docket issue's tier root without adding that payload to the PM data repo.
+Artifacts hold large handoff, requirement-bundle, or evidence payloads in a
+sibling directory of their docket issue's PM data repo. This keeps payloads in
+the same tier while ensuring they never live inside the PM Git repository.
 Each artifact directory is its own Git repository at
-``$DOCKET_ROOT/artifacts/<ISSUE-ID>/``.
+``<DOCKET_ROOT>-artifacts/<ISSUE-ID>/``.
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import DocketError
-from .gitops import atomic_write_file, auto_commit
 from .issue import find_repo_root, load_all, load_by_id, normalize_id
 
 SUPPORTED_TEMPLATES = ("handoff", "requirement")
@@ -33,8 +33,9 @@ class ArtifactSummary:
 
 
 def artifact_root() -> Path:
-    """Return the artifacts directory for the currently resolved docket root."""
-    return Path(find_repo_root()) / "artifacts"
+    """Return the external artifact directory for the resolved docket root."""
+    docket_root = Path(find_repo_root())
+    return docket_root.with_name(f"{docket_root.name}-artifacts")
 
 
 def artifact_path(id_: str) -> Path:
@@ -61,7 +62,6 @@ def cmd_artifact_init(id_: str, template: str = "handoff") -> None:
     root.mkdir(parents=True, exist_ok=True)
     if path.exists() and any(path.iterdir()):
         raise DocketError(f"artifact already exists: {path}")
-    _ensure_payload_ignored(root)
 
     if template == "requirement":
         _init_requirement(path, id_, issue.title())
@@ -171,26 +171,6 @@ def _existing_issue_id(id_: str) -> str:
     normalized = normalize_id(id_)
     load_by_id(normalized)
     return normalized
-
-
-def _ensure_payload_ignored(root: Path) -> None:
-    """Ensure the PM repo ignores nested artifact payload repositories."""
-    ignore = root.parent / ".gitignore"
-    line = "artifacts/*"
-    text = ""
-    if ignore.exists():
-        text = ignore.read_text(encoding="utf-8", errors="surrogateescape")
-    if line in {ln.strip() for ln in text.splitlines()}:
-        return
-    updated = text
-    if updated and not updated.endswith("\n"):
-        updated += "\n"
-    if updated and not updated.endswith("\n\n"):
-        updated += "\n"
-    updated += "# docket artifact payload repos (each has its own Git history)\n"
-    updated += line + "\n"
-    atomic_write_file(str(ignore), updated)
-    auto_commit(str(ignore), "pm(docket): ignore artifact payload repos")
 
 
 def _init_handoff(path: Path, id_: str, title: str) -> None:

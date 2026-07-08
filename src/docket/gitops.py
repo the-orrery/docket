@@ -150,8 +150,8 @@ def cmd_sync() -> None:
     """Sweep PM files and artifact repositories edited outside docket into history.
 
     PM data files are committed one file at a time in the PM repo. Artifact
-    payloads live in independent nested Git repositories, so their dirty working
-    trees are committed inside those repositories instead of entering PM history.
+    payloads live in external issue-owned Git repositories, so their dirty
+    working trees are committed there instead of entering PM history.
     """
     from .artifact import sync_all_artifacts
 

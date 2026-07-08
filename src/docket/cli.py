@@ -292,7 +292,7 @@ def _artifact_init(
         help="artifact template: handoff or requirement",
     ),
 ):
-    """create an issue-owned artifact Git repo under $DOCKET_ROOT/artifacts/<id>"""
+    """create an issue-owned artifact Git repo outside the PM data repo"""
     A.cmd_artifact_init(id, template)
 
 
