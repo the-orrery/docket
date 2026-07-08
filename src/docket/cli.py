@@ -148,9 +148,11 @@ def _ready():
 def _show(
     id: str,
     no_comments: bool = typer.Option(False, "--no-comments"),
+    all_comments: bool = typer.Option(False, "--all-comments", help="show full comment text (default: directory only)"),
+    comment: int = typer.Option(None, "--comment", help="show a single comment by 1-based index"),
 ):
-    """key frontmatter + full body (+ comments by default)"""
-    C.cmd_show(id, no_comments)
+    """key frontmatter + full body (+ comment directory by default)"""
+    C.cmd_show(id, no_comments, all_comments=all_comments, comment_idx=comment)
 
 
 @app.command("path")

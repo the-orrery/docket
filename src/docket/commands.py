@@ -374,9 +374,8 @@ def _print_blocks_line(is_, all_issues):
 
 
 def cmd_show(  # noqa: C901, PLR0912
-    id_, no_comments
-):  # one issue-render command (port of show.go)
-    show_comments = not no_comments
+    id_, no_comments, *, all_comments=False, comment_idx=None,
+):
     is_ = load_by_id(id_)
     projects, _ = load_projects()
     all_issues = load_all()
@@ -401,7 +400,6 @@ def cmd_show(  # noqa: C901, PLR0912
         v, ok = is_.get(k)
         if not ok:
             if k == "blocked_by":
-                # computed reverse edges render even without an own blocked_by
                 _print_blocks_line(is_, all_issues)
             continue
         if k == "blocked_by":
@@ -411,14 +409,12 @@ def cmd_show(  # noqa: C901, PLR0912
                 print(f"{'blocked_by:':<11} {' / '.join(labels)}")
             _print_blocks_line(is_, all_issues)
         elif k == "id":
-            # show the prefixed display id; keep canonical ISSUE-N when it differs
             disp = display_id(is_, projects)
             if disp != is_.id():
                 print(f"{'id:':<11} {disp} ({is_.id()})")
             else:
                 print(f"{'id:':<11} {disp}")
         elif k == "project":
-            # annotate the key with its project title when known
             key = unquote_scalar(v)
             p = projects.get(key)
             if p is not None and p.title != "":
@@ -431,21 +427,101 @@ def cmd_show(  # noqa: C901, PLR0912
     print(is_.body, end="")
     if not is_.body.endswith("\n"):
         print()
-    if show_comments:
-        print_comments(is_.id())
-
-
-def print_comments(id_):
-    """Append a "## 讨论(N 条)" section reading comments/ISSUE-<n>.md. The comment
-    file's frontmatter and "# 标题" line are skipped; only the comment blocks
-    (from the first "## " onward) are shown. No-op if absent or empty."""
-    body, n = read_comments(id_)
-    if n == 0:
+    if no_comments:
         return
-    print(f"\n## 讨论({n} 条)\n")
+    if comment_idx is not None:
+        print_comment_single(is_.id(), comment_idx)
+    elif all_comments:
+        print_comments_full(is_.id())
+    else:
+        print_comments_directory(is_.id())
+
+
+def _parse_comment_blocks(id_, root=None):
+    """Parse comment file into list of (header, body, byte_size) tuples."""
+    if root is None:
+        try:
+            root = find_repo_root()
+        except DocketError:
+            return []
+    path = str(Path(root) / "comments" / (id_ + ".md"))
+    try:
+        with Path(path).open(encoding="utf-8", errors="surrogateescape") as f:
+            text = f.read()
+    except OSError:
+        return []
+    if text.startswith("---\n"):
+        end = text[len("---\n"):].find("\n---\n")
+        if end >= 0:
+            text = text[len("---\n") + end + len("\n---\n"):]
+    idx = index_of_heading(text, "## ")
+    if idx < 0:
+        return []
+    content = text[idx:]
+    blocks = []
+    parts = ("\n" + content).split("\n## ")[1:]
+    for part in parts:
+        lines = part.split("\n", 1)
+        header = lines[0].strip()
+        body = lines[1] if len(lines) > 1 else ""
+        byte_size = len(("## " + part).encode("utf-8", "surrogateescape"))
+        blocks.append((header, body, byte_size))
+    return blocks
+
+
+def _fmt_size(n):
+    if n < 1024:
+        return f"{n}B"
+    return f"{n / 1024:.1f}KB"
+
+
+def print_comments_directory(id_):
+    """Show a compact directory of comments: index, timestamp, size, first content line."""
+    blocks = _parse_comment_blocks(id_)
+    if not blocks:
+        return
+    total_bytes = sum(b[2] for b in blocks)
+    print(f"\n── comments ({len(blocks)} 条, {_fmt_size(total_bytes)}) ──")
+    for i, (header, body, size) in enumerate(blocks, 1):
+        preview = body.strip().split("\n")[0][:60] if body.strip() else ""
+        print(f"  #{i:<3} {_fmt_size(size):>7}  {header}")
+        if preview:
+            print(f"         {preview}")
+    print(f"\n  全文: docket show {id_} --all-comments")
+    print(f"  单条: docket show {id_} --comment N")
+
+
+def print_comment_single(id_, idx):
+    """Print a single comment by 1-based index."""
+    blocks = _parse_comment_blocks(id_)
+    if not blocks:
+        print("(no comments)")
+        return
+    if idx < 1 or idx > len(blocks):
+        raise DocketError(f"comment #{idx} out of range (1-{len(blocks)})")
+    header, body, size = blocks[idx - 1]
+    print(f"\n## {header}\n")
     print(body, end="")
     if not body.endswith("\n"):
         print()
+
+
+def print_comments_full(id_):
+    """Print all comments in full (legacy behavior)."""
+    blocks = _parse_comment_blocks(id_)
+    if not blocks:
+        return
+    print(f"\n## 讨论({len(blocks)} 条)\n")
+    for header, body, _ in blocks:
+        print(f"## {header}")
+        print(body, end="")
+    if blocks and not blocks[-1][1].endswith("\n"):
+        print()
+
+
+def print_comments(id_):
+    """Backwards-compatible full comment output (used by other callers)."""
+    print_comments_full(id_)
 
 
 def read_comments(id_, root=None):
