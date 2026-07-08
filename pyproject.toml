@@ -43,7 +43,7 @@ dev = [
     "pytest-randomly",
     "poethepoet",
     "pyrefly==1.1.1",
-    "ruff==0.15.16",
+    "ruff==0.15.20",
 ]
 freeze = ["pyinstaller>=6.0"]
 
