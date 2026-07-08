@@ -168,7 +168,7 @@ def _pctile(xs: list[int], p: int) -> int:
     if not xs:
         return 0
     s = sorted(xs)
-    if p >= 100:
+    if p >= 100:  # noqa: PLR2004
         return s[-1]
     idx = p * len(s) // 100
     return s[min(idx, len(s) - 1)]
@@ -194,7 +194,7 @@ def _verb(command_path: str) -> str:
     return ""
 
 
-def stats(path: Path | None = None) -> str:
+def stats(path: Path | None = None) -> str:  # noqa: C901
     """Per-verb summary plus recent faults, as human-readable text."""
     p = path or db_path()
     if not p.exists():

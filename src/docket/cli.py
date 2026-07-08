@@ -33,7 +33,7 @@ _click_exc = _typer_click.exceptions
 
 
 def _command_suggestion(
-    typo: str, commands: list[str], rest: list[str], prog: str
+    _typo: str, commands: list[str], rest: list[str], prog: str
 ) -> str | None:
     """Hint for the 'noun-before-verb' mistake (e.g. `docket issue show <id>`):
     the typed group token is unknown, but a *later* token is a real command — so
@@ -89,7 +89,7 @@ def _load_tiers() -> dict[str, str]:
         return {}
     import tomllib
 
-    with open(p, "rb") as f:
+    with p.open("rb") as f:
         data = tomllib.load(f)
     return {k: str(Path(v).expanduser()) for k, v in data.get("tiers", {}).items()}
 

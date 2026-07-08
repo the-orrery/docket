@@ -47,7 +47,7 @@ class Project:
 
     __slots__ = ("body", "key", "lane", "path", "prefix", "rank", "status", "title")
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         key="",
         title="",
@@ -183,7 +183,9 @@ def progress_counts(issues) -> tuple[int, int]:
     return done, total
 
 
-def cmd_projects(all_):  # one project-overview render (port of projects.go)
+def cmd_projects(  # noqa: C901, PLR0912, PLR0915
+    all_,
+):  # one project-overview render (port of projects.go)
     """Print the project-layer overview: one row per project with its prefix,
     title, status, and progress (active count + done/scope). Default hides
     archived projects (status done/archived/canceled); --all shows them. Issues
@@ -352,7 +354,7 @@ def _print_triage_pending_line(issues):
     print()
 
 
-def cmd_overview(
+def cmd_overview(  # noqa: C901, PLR0912, PLR0915
     show_projects: bool = True,
 ):  # one whole-state index render (port of overview.go)
     """Print a human-facing one-screen index of the whole PM state: what's in
