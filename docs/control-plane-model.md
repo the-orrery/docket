@@ -78,3 +78,17 @@ blocked_by: [ISSUE-17, ISSUE-23]
 issue 只有在正文或评论说明“改了什么”和“凭什么算完成”后才应该关闭。
 工具可以提示 stale work、孤儿 commit 引用和结构校验问题，但不能替人判断
 证据是否在语义上足够。这个判断仍然需要人或 agent 审阅。
+
+## Worktree 关闭闸
+
+如果一个 issue 名下还有 registrar 登记的 active worktree，关闭 issue 会被阻断。
+`finish`、`status completed|canceled` 和 `set --status Done|Canceled` 在写入前会调用：
+
+```sh
+registrar worktree reconcile <id> --format json
+```
+
+`reconcile` 会同时接受 issue 的 canonical id 和显示别名；因此同一个数字锚点从
+`WORK-903` 显示成 `ERI-903` 时，仍能找到挂在任一 owner_ref 下的 worktree。
+阻断输出会列出每个 worktree 的状态和下一步动作。正常处理顺序是先合并或删除这些
+worktree，再重新关闭 issue；`DOCKET_WORKTREE_CLOSE_GATE=0` 只作为紧急逃生口。
