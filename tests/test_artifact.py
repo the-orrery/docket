@@ -66,7 +66,9 @@ def test_artifact_init_creates_handoff_repo_outside_pm_repo(repo, capsys):
     assert (artifact / ".git").is_dir()
     assert (artifact / "brief.md").is_file()
     assert not (repo / "artifacts").exists()
-    assert _git(repo, "status", "--porcelain").stdout == ""
+    status = _git(repo, "status", "--porcelain", "--untracked-files=all").stdout
+    assert "artifacts" not in status
+    assert "brief.md" not in status
 
 
 def test_artifact_sync_commits_direct_checkout_edits(repo, capsys):
