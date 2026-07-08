@@ -230,6 +230,6 @@ def git_log_records(repo: str, limit: int) -> list[tuple[str, str, str]]:
         parts = rec.split(_LOG_FS)
         h = parts[0] if len(parts) > 0 else ""
         subj = parts[1] if len(parts) > 1 else ""
-        body = parts[2] if len(parts) > 2 else ""
+        body = parts[2] if len(parts) > 2 else ""  # noqa: PLR2004
         records.append((h, subj, body))
     return records

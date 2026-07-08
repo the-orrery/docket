@@ -114,7 +114,7 @@ def issue_rows(issues, projects, by_id=None):
 # ---- list / batch / active ----
 
 
-def filter_issues(
+def filter_issues(  # noqa: PLR0913
     f_status, f_state_type, f_project, f_batch, f_milestone, f_triage=False
 ):
     """Load all issues and apply the given filters. Empty filters are ignored.
@@ -147,7 +147,7 @@ def filter_issues(
     return out
 
 
-def cmd_list(status, state_type, project, batch, milestone, triage=False):
+def cmd_list(status, state_type, project, batch, milestone, triage=False):  # noqa: PLR0913
     out = filter_issues(status, state_type, project, batch, milestone, triage)
     if len(out) == 0:
         print("(no matching issues)")
@@ -173,7 +173,7 @@ def todo_batches(issues):
     )
 
 
-def cmd_batch(arg):  # one cohesive batch-view command (port of batch.go)
+def cmd_batch(arg):  # one cohesive batch-view command (port of batch.go)  # noqa: C901
     """Rolling-batch view: Todo split into 本批 (lowest open batch) / 下批 (next) /
     后续 (higher batches + unbatched). With a numeric arg, list just that batch."""
     issues = load_all()
@@ -373,7 +373,9 @@ def _print_blocks_line(is_, all_issues):
         print(f"{'blocks:':<11} {' / '.join(labels)}")
 
 
-def cmd_show(id_, no_comments):  # one issue-render command (port of show.go)
+def cmd_show(
+    id_, no_comments
+):  # one issue-render command (port of show.go)  # noqa: C901, PLR0912
     show_comments = not no_comments
     is_ = load_by_id(id_)
     projects, _ = load_projects()
@@ -599,7 +601,7 @@ _BODY_PROJECT_PLAN = """\
 _NEW_TYPES = {"task": _BODY_TASK, "bug": _BODY_BUG}
 
 
-def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)
+def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)  # noqa: C901, PLR0912, PLR0913, PLR0915
     title,
     project,
     priority,
@@ -856,7 +858,7 @@ def projects_dir() -> str:
     return d
 
 
-def cmd_project_new(
+def cmd_project_new(  # noqa: PLR0913
     key,
     title="",
     prefix="",
@@ -995,7 +997,7 @@ def cmd_status(id_, state):
 # ---- set ----
 
 
-def cmd_set(  # mirrors the `set` CLI flag surface 1:1 (port of set.go)
+def cmd_set(  # mirrors the `set` CLI flag surface 1:1 (port of set.go)  # noqa: C901, PLR0912, PLR0913, PLR0915
     id_,
     priority=None,
     project=None,
@@ -1113,7 +1115,9 @@ class _SearchHit:
         self.snippets = []
 
 
-def cmd_search(kw):  # one grep-across-issues+comments command (port of search.go)
+def cmd_search(
+    kw,
+):  # one grep-across-issues+comments command (port of search.go)  # noqa: C901, PLR0912
     """grep issues/*.md (title + body) and comments/*.md (comment bodies) for kw,
     case-insensitively. Structured frontmatter is NOT searched. One line per
     matched issue, sorted by id, deduped, with indented source-tagged snippets."""
@@ -1264,7 +1268,7 @@ def _comment_block(actor, text, session=None):
     return f"## {ts} · {actor}{suffix}\n\n{text}\n\n---\n\n"
 
 
-def cmd_comment(
+def cmd_comment(  # noqa: PLR0913
     id_, actor, text, amend=False, delete_last=False, session=None
 ):  # append/amend/delete-last share one entry (port of comment.go)
     """Append a comment block to <root>/comments/ISSUE-<n>.md (creating it with
@@ -1344,7 +1348,7 @@ def parse_date(s):
 
 
 # One pass over all data-integrity checks (port of validate.go).
-def collect_validation_problems(issues, strict=False):
+def collect_validation_problems(issues, strict=False):  # noqa: C901, PLR0912, PLR0915
     """Run every data-integrity check over `issues` and return the sorted list of
     problem strings (empty when clean). Pure: no printing, no exit — `cmd_validate`
     handles output/ExitSignal, and `cmd_groom` reuses this for its validate summary.
@@ -1677,7 +1681,7 @@ def _is_long_work_candidate(is_, child_counts: dict[str, int]) -> bool:
     intentionally ignored to avoid nagging normal leaf decomposition.
     """
     text = f"{is_.title()}\n{is_.body}"
-    return child_counts.get(is_.id(), 0) >= 2 or _has_any_marker(
+    return child_counts.get(is_.id(), 0) >= 2 or _has_any_marker(  # noqa: PLR2004
         text, _LONG_WORK_BODY_MARKERS
     )
 
@@ -1692,7 +1696,7 @@ def _section_body(body: str, heading: str) -> str:
     return body[start:end].strip()
 
 
-def _long_work_signals(issues, projects) -> tuple[int, list[dict]]:
+def _long_work_signals(issues, projects) -> tuple[int, list[dict]]:  # noqa: C901, PLR0912
     """Structured advisory signals for long-running agent work.
 
     These are deliberately NOT validation errors. They only surface low-noise
@@ -1721,7 +1725,7 @@ def _long_work_signals(issues, projects) -> tuple[int, list[dict]]:
         display = display_id(is_, projects)
         seen: set[tuple[str, str]] = set()
 
-        def add_signal(
+        def add_signal(  # noqa: PLR0913
             kind: str,
             label: str,
             reason: str,
@@ -1730,14 +1734,14 @@ def _long_work_signals(issues, projects) -> tuple[int, list[dict]]:
             confidence: str = "high",
         ) -> None:
             key = (kind, field)
-            if key in seen:
+            if key in seen:  # noqa: B023
                 return
-            seen.add(key)
+            seen.add(key)  # noqa: B023
             signals.append(
                 {
-                    "issue_id": is_.id(),
-                    "display_id": display,
-                    "title": is_.title(),
+                    "issue_id": is_.id(),  # noqa: B023
+                    "display_id": display,  # noqa: B023
+                    "title": is_.title(),  # noqa: B023
                     "kind": kind,
                     "label": label,
                     "severity": "advisory",
@@ -1885,7 +1889,7 @@ def cmd_health(project="", as_json=False):
             f"- {signal['display_id']}: {signal['label']} "
             f"({signal['kind']}) — {signal['recommended_action']}"
         )
-    if len(health["signals"]) > 20:
+    if len(health["signals"]) > 20:  # noqa: PLR2004
         print(f"... 另 {len(health['signals']) - 20} 条")
 
 
@@ -1916,7 +1920,7 @@ def _writing_health(issues, root):
     }
 
 
-def cmd_groom(project="", as_json=False, today_str=""):
+def cmd_groom(project="", as_json=False, today_str=""):  # noqa: C901, PLR0912
     """Periodic mechanical inventory of every non-done issue (state_type ∉
     {completed, canceled}) — the deterministic step the docket-groom skill drives
     before any LLM fan-out. One row per issue: status / stalled-days (today −
@@ -2025,7 +2029,7 @@ def cmd_groom(project="", as_json=False, today_str=""):
             preview = "; ".join(
                 f"{h['id']}({', '.join(h['hints'])})" for h in hints[:5]
             )
-            more = "" if len(hints) <= 5 else f" · 另 {len(hints) - 5} 条"
+            more = "" if len(hints) <= 5 else f" · 另 {len(hints) - 5} 条"  # noqa: PLR2004
             print(f"长期工作提示: {preview}{more}")
 
 
