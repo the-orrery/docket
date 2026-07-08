@@ -17,7 +17,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from .artifact import artifact_show_line
+from .artifact import artifact_path, artifact_show_line
 from .errors import DocketError, ExitSignal
 from .gitops import auto_commit, git_log_records
 from .issue import (
@@ -846,7 +846,13 @@ def cmd_new(  # mirrors the `new` CLI flag surface 1:1 (port of new.go)  # noqa:
             os.close(fd)
         break
     auto_commit(is_.path, f"pm(docket): {id_} new — {title}")
-    print(f"created {is_.path}")
+    projects, _ = load_projects()
+    disp = display_id(is_, projects)
+    if disp != is_.id():
+        print(f"created {disp} ({is_.id()}): {is_.path}")
+    else:
+        print(f"created {disp}: {is_.path}")
+    print(f"artifact: {artifact_path(is_.id())} (init: docket artifact init {disp})")
     if body is None or body == "":
         print("hint: body 是骨架填空; 写法详见 references/docket-writing.md")
 
