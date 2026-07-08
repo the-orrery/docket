@@ -4,9 +4,10 @@ projects.go.
 
 A Project is a mid-level container (projects/<key>.md): a few-days-to-weeks
 effort with deliverables. Issues belong to one by setting their `project` field
-to the project's key. The prefix is a DISPLAY label only — the canonical id stays
-ISSUE-N (the number is the true anchor), so an issue can be reassigned to another
-project (a different prefix) without its id or any reference ever breaking.
+to the project's key. The prefix plus an issue's project_iid forms the
+human-facing display ref (for example WORK-12). The legacy storage id stays in
+the issue filename, while resolver aliases keep old refs readable after project
+changes.
 
 These are read-only views: no git/telemetry side effects here.
 """
@@ -17,9 +18,8 @@ from .errors import DocketError
 from .issue import (
     find_repo_root,
     id_num,
-    id_prefix,
     load_all,
-    normalize_id,
+    load_by_id,
     parse_issue,
     sort_by_priority,
     today,
@@ -147,17 +147,20 @@ def get_or(is_, key) -> str:
 
 
 def display_id(is_, projects) -> str:
-    """Render an issue's id with its project's prefix (e.g. DEMO-320), falling back
-    to the canonical ISSUE-N when the issue has no known project. Only the label
-    differs; the number is unchanged."""
-    n, ok = id_num(is_.id())
-    if not ok:
-        return is_.id()
-    prefix = id_prefix()
+    """Render the human-facing issue ref.
+
+    Identity v3 uses project-local ``project_iid`` for the human number. Older
+    issues without that field keep the legacy global-number display until a
+    migration stamps project_iid.
+    """
     p = projects.get(is_.project())
-    if p is not None and p.prefix != "":
-        prefix = p.prefix
-    return f"{prefix}-{n}"
+    if p is None or p.prefix == "":
+        return is_.id()
+    iid = is_.project_iid()
+    if iid is not None:
+        return f"{p.prefix}-{iid}"
+    n, ok = id_num(is_.id())
+    return f"{p.prefix}-{n}" if ok else is_.id()
 
 
 def progress_counts(issues) -> tuple[int, int]:
@@ -297,7 +300,7 @@ def cmd_projects(  # noqa: C901, PLR0912, PLR0915
 def cmd_tree(id_):
     """Print an issue and its descendants (by parent field) as an indented tree,
     using prefixed display ids. Cycle-guarded."""
-    root_id = normalize_id(id_)
+    root_id = load_by_id(id_).id()
     issues = load_all()
     by_id = {}
     children = {}

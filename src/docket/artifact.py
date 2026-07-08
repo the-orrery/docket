@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import DocketError
-from .issue import find_repo_root, load_all, load_by_id, normalize_id
+from .issue import find_repo_root, load_all, load_by_id
+from .projects import display_id, load_projects
 
 SUPPORTED_TEMPLATES = ("handoff", "requirement")
 
@@ -169,9 +170,7 @@ def sync_all_artifacts() -> list[ArtifactSummary]:
 
 def _existing_issue_id(id_: str) -> str:
     """Normalize an id and verify that the issue exists."""
-    normalized = normalize_id(id_)
-    load_by_id(normalized)
-    return normalized
+    return load_by_id(id_).id()
 
 
 def _init_handoff(path: Path, id_: str, title: str) -> None:
@@ -185,6 +184,7 @@ def _init_handoff(path: Path, id_: str, title: str) -> None:
     }
     for rel, content in files.items():
         (path / rel).write_text(content, encoding="utf-8")
+    _write_manifest(path, id_)
 
 
 def _init_requirement(path: Path, id_: str, title: str) -> None:
@@ -210,6 +210,21 @@ def _init_requirement(path: Path, id_: str, title: str) -> None:
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout).strip()
         raise DocketError(f"rd-pipeline init failed: {detail}")
+    _write_manifest(path, id_)
+
+
+def _write_manifest(path: Path, id_: str) -> None:
+    issue = load_by_id(id_)
+    projects, _ = load_projects()
+    display = display_id(issue, projects)
+    content = (
+        "schema: docket-artifact-v1\n"
+        f"issue_uid: {issue.uid()}\n"
+        f"issue_id: {issue.id()}\n"
+        f"display_ref: {display}\n"
+        f"aliases: [{', '.join(issue.aliases())}]\n"
+    )
+    (path / ".docket-artifact.yaml").write_text(content, encoding="utf-8")
 
 
 def _ensure_git_repo(path: Path) -> None:
