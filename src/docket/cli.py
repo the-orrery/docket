@@ -17,7 +17,6 @@ import time
 from pathlib import Path
 
 import typer
-from orrery_heartbeat import check_update
 from typer import _click as _typer_click  # typer 0.26 vendors click here
 from typer.core import TyperGroup
 
@@ -810,7 +809,6 @@ def _consume_tier(argv: list[str]) -> list[str]:
 
 def main_docket() -> None:
     """`docket` entry point: explicit, agent/script-facing. argv -> verb, no magic."""
-    check_update("docket", "the-orrery/docket")
     _relax_std_encoding()
     argv = _consume_tier(sys.argv[1:])
     _maybe_launch_ui(argv)
@@ -827,7 +825,6 @@ def main_pm() -> None:
     """`pm` entry point: ergonomic human shell. Bare `pm` = overview; `pm <key>`
     = drill that project; `pm <id>` = print the issue's file path; anything else
     passes through to the normal verbs."""
-    check_update("docket", "the-orrery/docket")
     _relax_std_encoding()
     argv = _consume_tier(sys.argv[1:])
     _maybe_launch_ui(argv)

@@ -11,7 +11,7 @@ build_binary() {
   local name="$1" entry="$2"
   uv run --group freeze pyinstaller --noconfirm --onefile --clean \
     --paths "${ROOT}/src" --collect-submodules docket --collect-all textual \
-    --collect-submodules orrery_heartbeat --name "${name}" \
+    --name "${name}" \
     --distpath "${BUILD_DIR}/dist" --workpath "${BUILD_DIR}/work/${name}" \
     --specpath "${BUILD_DIR}/spec" "${ROOT}/${entry}"
   install -m 0755 "${BUILD_DIR}/dist/${name}" "${OUTPUT_DIR}/${name}-${platform}-${arch}"
@@ -21,7 +21,7 @@ build_binary pm scripts/pm_entry.py
 if [[ "${SKIP_SMOKE:-0}" != "1" ]]; then
   smoke_root="$(mktemp -d)"
   for name in docket pm; do
-    CI=1 ORRERY_NO_UPDATE_CHECK=1 DOCKET_ROOT="${smoke_root}/pm" XDG_DATA_HOME="${smoke_root}/data" XDG_CACHE_HOME="${smoke_root}/cache" \
+    CI=1 DOCKET_ROOT="${smoke_root}/pm" XDG_DATA_HOME="${smoke_root}/data" XDG_CACHE_HOME="${smoke_root}/cache" \
       "${OUTPUT_DIR}/${name}-${platform}-${arch}" --help >/dev/null
   done
   rm -rf "${smoke_root}"
