@@ -6,7 +6,7 @@ build-backend = "uv_build"
 
 [project]
 name = "docket"
-version = "0.9.5"
+version = "0.9.6"
 description = "Local-first project management CLI for file-backed issue tracking"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -26,7 +26,7 @@ dependencies = [
     "textual>=0.86",
     "pydantic-settings>=2.0",
     "structlog>=24.0",
-    "orrery-heartbeat @ git+https://github.com/the-orrery/orrery-heartbeat.git@3eb8b4c4d5855e8da9f59f4456adfc5b38d262e8",
+    "orrery-heartbeat @ git+https://github.com/the-orrery/orrery-heartbeat.git@2eb9141389416e529aaa8ac7c7a744cae2efd3e8",
 ]
 
 # 两个 console script,一个核心(见 README「两个入口,一个核心」)。各自的 main 内置
