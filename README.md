@@ -35,9 +35,10 @@
 
 ## 安装
 
-```sh
-uv tool install --force .
-```
+从 [GitHub Releases](https://github.com/the-orrery/docket/releases) 下载同一平台的
+`docket-<os>-<arch>` 和 `pm-<os>-<arch>`，按 `SHA256SUMS` 校验后分别安装为
+`docket` 与 `pm`。二进制不依赖 Python、`uv` 或本地源码仓；数据仓、git、编辑器
+等仍是产品运行边界。当前发布 macOS arm64 和 Linux x86_64（Ubuntu 22.04 基线）。
 
 本地开发：
 
@@ -45,6 +46,7 @@ uv tool install --force .
 uv sync
 uv run docket --help
 uv run pytest
+./scripts/build-release.sh
 ```
 
 ## 数据仓
