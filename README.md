@@ -144,6 +144,10 @@ agent、hook 或自动化集成自发提议建的 issue 默认先进**待审态*
 worktree 合并或删除，再重新关闭 issue。只有紧急情况下才用
 `DOCKET_WORKTREE_CLOSE_GATE=0` 绕过。
 
+默认会为这次 reconcile 预留 30 秒；仅在机器诊断或受控环境需要调整时，可用
+`DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS`（限制在 1–120 秒）覆盖。它不是
+关闭 gate：reconcile 仍会完成并决定是否允许关单。
+
 `pm`/`docket ui` 批次 Tab 左栏末尾的「全部」桶会把所有 open（进行中 + 待办 + 暂存）一把列全，无视 batch，snoozed 的标「💤 睡到 X」；左栏另有「待审」桶列未过 TTL 的 triage 项。项目 Tab 高亮一个项目时，右侧详情面板渲该项目自身的说明（`projects/<key>.md` 的 body），其中 `## 现状` 活状态段被提到最前突出显示，charter / 里程碑 / `## 现状·历史` 跟随其后；再高亮某条 issue 则切回该 issue 的正文。
 
 ## Root 解析

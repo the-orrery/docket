@@ -55,6 +55,7 @@ Textual，因为全屏终端 UI 必须占用真实终端。
 | 写操作只 stage 当前目标文件 | 并发写或脏 worktree 会被误收进同一 commit |
 | TUI 启动不能经过 stdout/stderr tee | 终端 UI 的控制序列会被采样包装破坏 |
 | telemetry 只写本机 SQLite，不写网络 | 发布仓不能依赖外部私有诊断服务 |
+| 关单前必须完成 worktree reconcile | 已登记 worktree 不会因 issue 误关而失去收口路径 |
 
 ## 改什么去哪
 
@@ -82,6 +83,13 @@ stdout/stderr 样本，用来诊断 CLI 行为。它不写网络。
 | `DOCKET_TELEMETRY_DB=/path/to/file.db` | 指定本地 ledger 路径 |
 
 ledger 可能包含命令输出样本，必须留在工具仓之外，并继续被 Git 忽略。
+
+## Worktree close gate
+
+进入 Done 或 Canceled 前，`worktree_gate.py` 调用 registrar 的 owner reconcile。
+默认给该受控子进程 30 秒预算，可用
+`DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS` 在 1–120 秒内覆盖。超时预算只保护
+调用方；它不改变 reconcile 的阻断语义，也不能替代清理 worktree。
 
 ## CI 和本地检查
 

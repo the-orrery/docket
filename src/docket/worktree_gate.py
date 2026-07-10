@@ -15,6 +15,7 @@ from .projects import display_id, load_projects
 
 _CLOSING_STATES = {"completed", "canceled"}
 _DISABLE_VALUES = {"0", "false", "no", "off"}
+_DEFAULT_RECONCILE_TIMEOUT_SECONDS = 30.0
 
 
 def is_closing_state(state_type: str) -> bool:
@@ -41,7 +42,7 @@ def ensure_worktrees_reconciled(is_: Issue, state_type: str) -> None:
             check=False,
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=_reconcile_timeout_seconds(),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise DocketError(f"worktree close gate failed: {exc}") from exc
@@ -57,6 +58,18 @@ def ensure_worktrees_reconciled(is_: Issue, state_type: str) -> None:
         raise DocketError(f"worktree close gate failed: {message}")
     if payload.get("blocked"):
         raise DocketError(_blocked_message(is_, payload))
+
+
+def _reconcile_timeout_seconds() -> float:
+    """Return a bounded operator override for the close-gate subprocess."""
+    raw = os.environ.get("DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS", "")
+    if not raw:
+        return _DEFAULT_RECONCILE_TIMEOUT_SECONDS
+    try:
+        configured = float(raw)
+    except ValueError:
+        return _DEFAULT_RECONCILE_TIMEOUT_SECONDS
+    return min(max(configured, 1.0), 120.0)
 
 
 def _owner_refs(is_: Issue) -> list[str]:
