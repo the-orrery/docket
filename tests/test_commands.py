@@ -10,6 +10,7 @@ import os
 import pytest
 
 from docket import commands as C
+from docket import worktree_gate
 from docket.commands import (
     _comment_block,
     _last_comment_start,
@@ -152,6 +153,20 @@ def test_finish_allows_when_worktree_gate_is_clear(repo, tmp_path, monkeypatch):
     C.cmd_finish("ISSUE-1")
 
     assert load_by_id("ISSUE-1").state_type() == "completed"
+
+
+def test_worktree_close_gate_timeout_is_bounded_and_configurable(monkeypatch):
+    monkeypatch.delenv("DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS", raising=False)
+    assert worktree_gate._reconcile_timeout_seconds() == 30.0
+
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS", "0.5")
+    assert worktree_gate._reconcile_timeout_seconds() == 1.0
+
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS", "999")
+    assert worktree_gate._reconcile_timeout_seconds() == 120.0
+
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS", "invalid")
+    assert worktree_gate._reconcile_timeout_seconds() == 30.0
 
 
 def test_set_status_with_other_fields_one_call(repo):
