@@ -26,7 +26,7 @@ dependencies = [
     "textual>=0.86",
     "pydantic-settings>=2.0",
     "structlog>=24.0",
-    "orrery-heartbeat @ git+https://github.com/the-orrery/orrery-heartbeat.git",
+    "orrery-heartbeat @ git+https://github.com/the-orrery/orrery-heartbeat.git@3eb8b4c4d5855e8da9f59f4456adfc5b38d262e8",
 ]
 
 # 两个 console script,一个核心(见 README「两个入口,一个核心」)。各自的 main 内置
@@ -45,7 +45,7 @@ dev = [
     "pyrefly==1.1.1",
     "ruff==0.15.20",
 ]
-freeze = ["pyinstaller>=6.0"]
+freeze = ["pyinstaller>=6,<7"]
 
 [tool.poe.tasks]
 lint = "ruff check ."
@@ -54,7 +54,7 @@ typecheck = "pyrefly check"
 test = "pytest"
 fmt-check = "ruff format --check ."
 check = { sequence = ["lint", "fmt-check", "typecheck", "test"], help = "lint + format + typecheck + test" }
-freeze = { cmd = "pyinstaller --onefile --clean --name docket src/docket/cli.py", help = "打单文件 binary 到 dist/" }
+freeze = { cmd = "./scripts/build-release.sh", help = "build docket and pm release binaries" }
 
 # Repo-specific ruff overrides. CI runs the same local configuration.
 [tool.ruff.lint]
