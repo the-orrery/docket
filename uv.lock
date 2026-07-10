@@ -30,15 +30,6 @@ wheels = [
 ]
 
 [[package]]
-name = "certifi"
-version = "2026.6.17"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c9/c7/424b75da314c1045981bd9777432fad05a9e0c69daa4ed7e308bbaffe405/certifi-2026.6.17.tar.gz", hash = "sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432", size = 134594, upload-time = "2026-06-17T10:31:07.894Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/2f/c5464532e965badff2f4c4c1a3a83f5697f0d7c407ed0cda44aaa99bb451/certifi-2026.6.17-py3-none-any.whl", hash = "sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db", size = 133289, upload-time = "2026-06-17T10:31:06.348Z" },
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -133,10 +124,9 @@ wheels = [
 
 [[package]]
 name = "docket"
-version = "0.9.6"
+version = "0.9.7"
 source = { editable = "." }
 dependencies = [
-    { name = "orrery-heartbeat" },
     { name = "pydantic-settings" },
     { name = "structlog" },
     { name = "textual" },
@@ -159,7 +149,6 @@ freeze = [
 
 [package.metadata]
 requires-dist = [
-    { name = "orrery-heartbeat", git = "https://github.com/the-orrery/orrery-heartbeat.git?rev=2eb9141389416e529aaa8ac7c7a744cae2efd3e8" },
     { name = "pydantic-settings", specifier = ">=2.0" },
     { name = "structlog", specifier = ">=24.0" },
     { name = "textual", specifier = ">=0.86" },
@@ -247,14 +236,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
-]
-
-[[package]]
-name = "orrery-heartbeat"
-version = "0.2.1"
-source = { git = "https://github.com/the-orrery/orrery-heartbeat.git?rev=2eb9141389416e529aaa8ac7c7a744cae2efd3e8#2eb9141389416e529aaa8ac7c7a744cae2efd3e8" }
-dependencies = [
-    { name = "certifi" },
 ]
 
 [[package]]
