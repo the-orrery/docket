@@ -44,7 +44,7 @@ dev = [
     "pyrefly==1.1.1",
     "ruff==0.15.20",
 ]
-freeze = ["pyinstaller>=6,<7"]
+freeze = ["pyinstaller>=6.21.0,<7"]
 
 [tool.poe.tasks]
 lint = "ruff check ."
