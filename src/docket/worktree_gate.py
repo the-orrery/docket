@@ -32,7 +32,10 @@ def ensure_worktrees_reconciled(is_: Issue, state_type: str) -> None:
         return
 
     refs = _owner_refs(is_)
-    cmd = [registrar, "worktree", "reconcile", refs[0]]
+    cmd = [registrar]
+    if tier := os.environ.get("DOCKET_ACTIVE_TIER"):
+        cmd.extend(["--tier", tier])
+    cmd.extend(["worktree", "reconcile", refs[0]])
     for alias in refs[1:]:
         cmd.extend(["--alias", alias])
     cmd.extend(["--format", "json"])

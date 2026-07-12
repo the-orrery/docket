@@ -139,6 +139,8 @@ agent、hook 或自动化集成自发提议建的 issue 默认先进**待审态*
 
 关闭 issue 时还有一层 **worktree close gate**：`finish`、`status completed|canceled`
 和 `set --status Done|Canceled` 会调用 `registrar worktree reconcile <uid> --alias <id/display/alias> --format json`。
+通过 `docket --tier <name>` 选择数据域时，同一个 tier 会传播给 Registrar，确保 close gate
+只查询对应 registry，不会静默回落到默认 registry。
 如果该 issue 还有 active worktree，命令会失败并打印每个 worktree 的收口动作
 （通常是 `registrar worktree closeout ... --apply`，或先合并/处理脏改）。先把这些
 worktree 合并或删除，再重新关闭 issue。只有紧急情况下才用
