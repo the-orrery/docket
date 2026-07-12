@@ -9,12 +9,31 @@ case "$(uname -m)" in arm64|aarch64) arch=arm64 ;; x86_64|amd64) arch=x86_64 ;; 
 mkdir -p "${OUTPUT_DIR}" "${BUILD_DIR}/dist" "${BUILD_DIR}/work" "${BUILD_DIR}/spec" "${PYINSTALLER_CONFIG_DIR}"
 build_binary() {
   local name="$1" entry="$2"
+  local archive="${OUTPUT_DIR}/${name}-${platform}-${arch}.tar.gz"
   uv run --group freeze pyinstaller --noconfirm --onedir --clean \
     --paths "${ROOT}/src" --collect-submodules docket --collect-all textual \
     --name "${name}" \
     --distpath "${BUILD_DIR}/dist" --workpath "${BUILD_DIR}/work/${name}" \
     --specpath "${BUILD_DIR}/spec" "${ROOT}/${entry}"
-  tar -C "${BUILD_DIR}/dist" -czf "${OUTPUT_DIR}/${name}-${platform}-${arch}.tar.gz" "${name}"
+  COPYFILE_DISABLE=1 tar -C "${BUILD_DIR}/dist" -czf "${archive}" "${name}"
+  python3 - "${archive}" "${name}" <<'PY'
+import sys
+import tarfile
+from pathlib import PurePosixPath
+
+archive, expected_root = sys.argv[1:]
+with tarfile.open(archive, "r:gz") as bundle:
+    for member in bundle.getmembers():
+        path = PurePosixPath(member.name)
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or not path.parts
+            or path.parts[0] != expected_root
+            or any(part.startswith("._") for part in path.parts)
+        ):
+            raise SystemExit(f"unsafe release bundle member: {member.name}")
+PY
 }
 build_binary docket scripts/docket_entry.py
 build_binary pm scripts/pm_entry.py

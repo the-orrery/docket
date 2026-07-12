@@ -786,7 +786,7 @@ def _relax_std_encoding() -> None:
 
 
 def _consume_tier(argv: list[str]) -> list[str]:
-    """Extract --tier <name> from argv, set DOCKET_ROOT, return remaining argv."""
+    """Extract --tier, activate its root for Docket and downstream tools."""
     if "--tier" not in argv:
         return argv
     idx = argv.index("--tier")
@@ -804,6 +804,7 @@ def _consume_tier(argv: list[str]) -> list[str]:
         print(f"error: unknown tier '{tier_name}'. Available: {avail}", file=sys.stderr)
         sys.exit(2)
     os.environ["DOCKET_ROOT"] = tiers[tier_name]
+    os.environ["DOCKET_ACTIVE_TIER"] = tier_name
     return argv[:idx] + argv[idx + 2 :]
 
 

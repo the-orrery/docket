@@ -155,6 +155,32 @@ def test_finish_allows_when_worktree_gate_is_clear(repo, tmp_path, monkeypatch):
     assert load_by_id("ISSUE-1").state_type() == "completed"
 
 
+def test_finish_propagates_active_tier_to_registrar(repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("DOCKET_WORKTREE_CLOSE_GATE", "1")
+    monkeypatch.setenv("DOCKET_ACTIVE_TIER", "secondary")
+    capture = tmp_path / "registrar-argv.json"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    script = bin_dir / "registrar"
+    script.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, os, sys\n"
+        "open(os.environ['CAPTURE_REGISTRAR_ARGV'], 'w').write(json.dumps(sys.argv[1:]))\n"
+        'print(\'{"blocked": false, "active_count": 0, "items": []}\')\n',
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    monkeypatch.setenv("CAPTURE_REGISTRAR_ARGV", str(capture))
+    monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + os.environ.get("PATH", ""))
+    _make()
+
+    C.cmd_finish("ISSUE-1")
+
+    registrar_argv = json.loads(capture.read_text())
+    assert registrar_argv[:4] == ["--tier", "secondary", "worktree", "reconcile"]
+    assert "ISSUE-1" in registrar_argv
+
+
 def test_worktree_close_gate_timeout_is_bounded_and_configurable(monkeypatch):
     monkeypatch.delenv("DOCKET_WORKTREE_CLOSE_GATE_TIMEOUT_SECONDS", raising=False)
     assert worktree_gate._reconcile_timeout_seconds() == 30.0

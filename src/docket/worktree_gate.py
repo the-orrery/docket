@@ -31,11 +31,7 @@ def ensure_worktrees_reconciled(is_: Issue, state_type: str) -> None:
     if registrar is None:
         return
 
-    refs = _owner_refs(is_)
-    cmd = [registrar, "worktree", "reconcile", refs[0]]
-    for alias in refs[1:]:
-        cmd.extend(["--alias", alias])
-    cmd.extend(["--format", "json"])
+    cmd = _reconcile_command(registrar, _owner_refs(is_))
     try:
         result = subprocess.run(
             cmd,
@@ -58,6 +54,16 @@ def ensure_worktrees_reconciled(is_: Issue, state_type: str) -> None:
         raise DocketError(f"worktree close gate failed: {message}")
     if payload.get("blocked"):
         raise DocketError(_blocked_message(is_, payload))
+
+
+def _reconcile_command(registrar: str, refs: list[str]) -> list[str]:
+    cmd = [registrar]
+    if tier := os.environ.get("DOCKET_ACTIVE_TIER"):
+        cmd.extend(["--tier", tier])
+    cmd.extend(["worktree", "reconcile", refs[0]])
+    for alias in refs[1:]:
+        cmd.extend(["--alias", alias])
+    return [*cmd, "--format", "json"]
 
 
 def _reconcile_timeout_seconds() -> float:
